@@ -5,4 +5,4 @@ testspace/*
 *.elf
 *.dump
 *.data
-fpga/fpga
+fpga
