@@ -25,3 +25,16 @@ module LSB(
     output wire [ROB_SIZE_BIT-1:0] lsb_rob_id,
 
 );
+
+    reg busy[0:`LSB_SIZE-1];
+    reg [31:0] r1_val[0:`LSB_SIZE-1];
+    reg [31:0] r2_val[0:`LSB_SIZE-1];
+    reg r1_has_dep[0:`LSB_SIZE-1];
+    reg r2_has_dep[0:`LSB_SIZE-1];
+    reg [`ROB_SIZE_BIT-1:0] r1_dep[0:`LSB_SIZE-1];
+    reg [`ROB_SIZE_BIT-1:0] r2_dep[0:`LSB_SIZE-1];
+    reg [`LSB_TYPE_BIT-1:0] type[0:`LSB_SIZE-1];
+
+    reg [`LSB_SIZE_BIT-1:0] head, tail;
+
+endmodule

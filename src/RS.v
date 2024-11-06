@@ -24,3 +24,19 @@ module RS(
     output wire [ROB_SIZE_BIT-1:0] rs_rob_id,
 
 );
+
+    reg busy[0:`RS_SIZE-1];
+    reg [31:0] r1_val[0:`RS_SIZE-1];
+    reg [31:0] r2_val[0:`RS_SIZE-1];
+    reg r1_has_dep[0:`RS_SIZE-1];
+    reg r2_has_dep[0:`RS_SIZE-1];
+    reg [ROB_SIZE_BIT-1:0] r1_dep[0:`RS_SIZE-1];
+    reg [ROB_SIZE_BIT-1:0] r2_dep[0:`RS_SIZE-1];
+    reg [RS_TYPE_BIT-1:0] type[0:`RS_SIZE-1];
+
+    wire is_free[0:`RS_SIZE-1];
+    wire [`RS_SIZE_BIT-1:0] free_id[0:`RS_SIZE-1];
+    wire is_exe[0:`RS_SIZE-1];
+    wire [`RS_SIZE_BIT-1:0] exe_id[0:`RS_SIZE-1];
+    //use the design of tree array to find the free id and exe id
+

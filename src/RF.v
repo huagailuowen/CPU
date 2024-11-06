@@ -26,7 +26,10 @@ module RF(
     output wire qry_r2_has_dep;
 
 );
-//
+
+    reg [31:0] reg_val[0:31];
+    reg [`ROB_SIZE_BIT-1:0] reg_dep[0:31];
+    reg has_dep[0:31];
 
 
 endmodule
