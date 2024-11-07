@@ -27,4 +27,31 @@ module MemCtrl(
     
 );
 
+    reg [2:0] cur_work_type;
+    reg cur_is_write;
+    reg [31:0] cur_addr;
+    reg [31:0] cur_data_in;
+    reg [31:0] cur_data_out;
+    // reg cur_ready_out;
+    // ready_out is already a reg
+    reg is_work;
+    reg [1:0]cur_len;
+    // how many bit has been read
+
+always @(posedge clk_in)
+begin
+    if (rst_in)
+    begin
+        cur_work_type <= 0;
+    end
+else if (!rdy_in)
+    begin
+      
+    end
+else
+    begin
+      
+    end
+end
+
 endmodule

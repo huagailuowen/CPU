@@ -5,13 +5,15 @@ module Decoder (
     input wire  rst_in,			// reset signal
 	input wire  rdy_in,			// ready signal, pause cpu when low
 
-    input wire [31:0] inst_in,	// instruction input
+    input wire [31:0] inst_input,	// instruction input
     input wire [31:0] inst,	    // instruction input
     input wire [31:0] inst_addr,// instruction address input
     output wire is_stall,		// stall signal
+    output reg next_PC,
 
 
     // interaction with RF
+    // the RF should return the information before the rob update, because the rob has not already deleted that instruction
     input wire [31:0]               rs1_val,
     input wire [31:0]               rs2_val,
     input wire                      rs1_has_dep,
@@ -24,26 +26,30 @@ module Decoder (
     // interaction with ROB
     //FROM
     output wire [ROB_SIZE_BIT-1:0] rob_qry1_id,
-    input wire                      rob_qry1_ready,
+    input wire                      rob_qry1_fi,
     input wire [31:0]              rob_qry1_value,
     output wire [ROB_SIZE_BIT-1:0]  rob_qry2_id,
-    input wire                      rob_qry2_ready,
+    input wire                      rob_qry2_fi,
     input wire [31:0]              rob_qry2_value, 
+    //the ROB should return the result updated by cd_bus' data of the cur cycle 
+
     //TO
     input wire                      rob_full,		// ROB full signal
+    input wire                      rob_clear,		// clear the ROB
     input wire                      rob_id,			// the ROB id of the instruction
-    output wire                     rob_input,      // the input signal of ROB
-    output wire [31:0]              rob_value,      // in case that the ins is a lui etc.
-    output wire [31:0]              rob_addr,       // the address of the instruction, for restarting ROB
-    output wire [ROB_TYPE_BIT-1:0]  rob_type,       // the type of the instruction
-    output wire [4:0]               rob_reg_id,     // the reg id of the instruction
-    output wire                     rob_fi,         // is the instruction has finished, like lui
+    output reg                     rob_input,      // the input signal of ROB
+    output reg [31:0]              rob_value,      // in case that the ins is a lui etc.
+    output reg [31:0]              rob_addr,       // the address of the instruction, for restarting ROB
+    output reg [ROB_TYPE_BIT-1:0]  rob_type,       // the type of the instruction
+    output reg [4:0]               rob_reg_id,     // the reg id of the instruction
+    output reg                     rob_fi,         // is the instruction has finished, like lui
 
 
 
     // interaction with RS
     input wire                      rs_full,	    // RS full signal
-    output wire                     rs_input,       // the input signal of RS
+    output reg                      rs_input,       // the input signal of RS
+    output reg [`RS_TYPE_BIT-1:0]  rs_type,        // the type of the instruction
     output wire [31:0]              rs_r1_val,      
     output wire [31:0]              rs_r2_val,
     output wire                     rs_r1_has_dep,
@@ -51,12 +57,13 @@ module Decoder (
     output wire [ROB_SIZE_BIT-1:0]  rs_r1_dep,
     output wire [ROB_SIZE_BIT-1:0]  rs_r2_dep,
     output wire [ROB_SIZE_BIT-1:0]  rs_rob_id,
-    output wire [4:0]               rs_rd_id,
+    // output wire [4:0]               rs_rd_id,
 
 
     // interaction with LSB
     input wire                      lsb_full,		// LSB full signal
-    output wire                     lsb_input,      // the input signal of LSB
+    output reg                      lsb_input,      // the input signal of LSB
+    output reg [`LSB_TYPE_BIT-1:0] lsb_type,       // the type of the instruction
     output wire [31:0]              lsb_r1_val,      
     output wire [31:0]              lsb_r2_val,
     output wire                     lsb_r1_has_dep,
@@ -64,7 +71,7 @@ module Decoder (
     output wire [ROB_SIZE_BIT-1:0]  lsb_r1_dep,
     output wire [ROB_SIZE_BIT-1:0]  lsb_r2_dep,
     output wire [ROB_SIZE_BIT-1:0]  lsb_rob_id,
-    output wire [4:0]               lsb_rd_id
+    // output wire [4:0]               lsb_rd_id
 
 
 
@@ -75,3 +82,154 @@ module Decoder (
     2. query RF and ROB for information
     3. issue for the next cycle 
     */
+    assign is_stall = !inst_input || rob_full || rs_full || lsb_full;
+
+    reg [31:0] r1_val;
+    reg [31:0] r2_val;
+    reg r1_has_dep;
+    reg r2_has_dep;
+    reg [ROB_SIZE_BIT-1:0] r1_dep;  
+    reg [ROB_SIZE_BIT-1:0] r2_dep;
+    assign rs_r1_val = r1_val;
+    assign rs_r2_val = r2_val;
+    assign rs_r1_has_dep = r1_has_dep;
+    assign rs_r2_has_dep = r2_has_dep;
+    assign rs_r1_dep = r1_dep;
+    assign rs_r2_dep = r2_dep;
+    assign lsb_r1_val = r1_val;
+    assign lsb_r2_val = r2_val;
+    assign lsb_r1_has_dep = r1_has_dep;
+    assign lsb_r2_has_dep = r2_has_dep;
+    assign lsb_r1_dep = r1_dep;
+    assign lsb_r2_dep = r2_dep;
+
+    wire [6:0] opcode = inst[6:0];
+    wire [4:0] rd = inst[11:7];
+    wire [4:0] rs1 = inst[19:15];
+    wire [4:0] rs2 = inst[24:20];
+    wire [2:0] func3 = inst[14:12];
+    wire [6:0] func7 = inst[31:25];
+    wire [11:0] immI = inst[31:20];
+    wire [11:0] immS = {inst[31:25], inst[11:7]};
+    wire [12:0] immB = {inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
+    wire [20:0] immU = {inst[31:12], 12'b0};
+    wire [20:0] immJ = {inst[31], inst[19:12], inst[20], inst[30:21], 1'b0};
+    localparam BR = 7'b1100011;
+    localparam JALR = 7'b1100111;
+    localparam JAL = 7'b1101111;
+    localparam AUIPC = 7'b0010111;
+    localparam LUI = 7'b0110111;
+    localparam LOAD = 7'b0000011;
+    localparam STORE = 7'b0100011;
+    localparam ARITH = 7'b0110011;
+    localparam ARITHI = 7'b0010011;
+
+
+    // fetch the information from RF & ROB  
+    wire need_r1 = opcode == ARITH || opcode == ARITHI || opcode == LOAD || opcode == STORE || opcode == BR ;
+    wire need_r2 = opcode == ARITH || opcode == STORE || opcode == BR;
+
+    wire need_rob = 1;
+    wire need_rs = opcode == ARITH || opcode == ARITHI || opcode == BR  || opcode == JAL || opcode == JALR;
+    wire need_lsb = opcode == LOAD || opcode == STORE;
+    wire tmp_r1_val;
+    wire tmp_r2_val;
+
+    assign rs1_id = rs1;
+    assign rob_qry1_id = rs1_dep;
+    assign tmp_r1_has_dep = need_r1 ? (rs1_has_dep ? (rob_qry1_fi ? 0 : 1): 0) : 0;
+    assign tmp_r1_dep = rs1_has_dep ? (rob_qry1_fi ? 0 : rs1_dep) : 0;
+    // assign tmp_r1_val = rs1_has_dep ? (rob_qry1_value) : rs1_val;
+    assign tmp_r1_val = rs1_has_dep ? (rob_qry1_fi ? rob_qry1_value : 0) : rs1_val;
+    
+    assign rs2_id = rs2;
+    assign rob_qry2_id = rs2_dep;
+    assign tmp_r2_has_dep = need_r2 ? (rs2_has_dep ? (rob_qry2_fi ? 0 : 1): 0) : 0;
+    assign tmp_r2_dep = rs2_has_dep ? (rob_qry2_fi ? 0 : rs2_dep) : 0;
+    // assign tmp_r2_val = rs2_has_dep ? (rob_qry2_value) : rs2_val;
+    assign tmp_r2_val = rs2_has_dep ? (rob_qry2_fi ? rob_qry2_value : 0) : rs2_val;
+    
+
+always @(posedge clk_in or posedge rst_in) 
+begin
+    if (rst_in || is_stall) begin
+        //reset 
+        rs_input <= 0;
+        lsb_input <= 0;
+        rob_input <= 0;
+        r1_val <= 0;
+        r2_val <= 0;
+        r1_has_dep <= 0;
+        r2_has_dep <= 0;
+        r1_dep <= 0;
+        r2_dep <= 0;
+    end
+    else if (rdy_in) 
+    begin
+        if(rob_clear)
+        begin
+            rs_input <= 0;
+            lsb_input <= 0;
+            rob_input <= 0;
+            r1_val <= 0;
+            r2_val <= 0;
+            r1_has_dep <= 0;
+            r2_has_dep <= 0;
+            r1_dep <= 0;
+            r2_dep <= 0;
+        end
+        else
+        begin
+            r1_has_dep <= tmp_r1_has_dep;
+            r2_has_dep <= tmp_r2_has_dep;
+            r1_dep <= tmp_r1_dep;
+            r2_dep <= tmp_r2_dep;
+            rob_input <= need_rob;
+            rs_input <= need_rs;
+            rs_type[4] <= opcode == BR;
+            rs_type[3:1] <= func3;
+            rs_type[0] <= func7[5];
+            lsb_input <= need_lsb;
+            lsb_type[3] <= opcode == STORE;
+            lsb_type[2:0] <= func3;
+
+
+            if(need_r1)
+                r1_val <= tmp_r1_val;
+            if(need_r2)
+                r2_val <= tmp_r2_val;
+            case(opcode)
+                ARITH: begin
+                    //arithmetic
+                end
+                ARITHI: begin
+                    //arithmetic immediate
+                    rs2_val <= {{20{immI[11]}}, immI}
+                end
+                BR: begin
+                    //branch
+                end
+                JALR: begin
+                    //jump and link register
+                end
+                JAL: begin
+                    //jump and link
+                end
+                AUIPC: begin
+                    //add upper immediate to pc
+                    rob_value <= inst_addr + {immU, 12'b0};
+                end
+                LUI: begin
+                    //load upper immediate
+                    rob_value <= {immU, 12'b0};
+                end
+                LOAD: begin
+                    //load
+                end
+                STORE: begin
+                    //store
+                end
+            endcase
+        end
+    end
+end

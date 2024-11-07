@@ -9,6 +9,7 @@ module RS(
 
     // interaction with Decoder
     input wire inst_input,  // the input signal of Decoder
+    input wire [`RS_TYPE_BIT-1:0] rs_type,  // the type of the instruction
     input wire [31:0] rs_r1_val,  // the value of rs1
     input wire [31:0] rs_r2_val,  // the value of rs2
     input wire rs_r1_has_dep,  // does rs1 has dependency
@@ -40,3 +41,15 @@ module RS(
     wire [`RS_SIZE_BIT-1:0] exe_id[0:`RS_SIZE-1];
     //use the design of tree array to find the free id and exe id
 
+always @(posedge clk_in or posedge rst_in) 
+begin
+    if (rst_in) begin
+        
+    end
+    else if (rdy_in) 
+    begin
+        
+    end
+end
+
+endmodule

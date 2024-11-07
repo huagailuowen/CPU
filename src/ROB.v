@@ -11,6 +11,7 @@ module ROB (
     output wire rob_full, // ROB full signal
     output wire [ROB_SIZE_BIT-1:0]rob_free_id, // the ROB id of the next instruction
     output wire rob_clear, // clear the ROB
+    output wire rob_rst_addr, // the address of the instruction, for restarting ROB
 
     // interaction with Decoder
     //FROM
@@ -38,6 +39,8 @@ module ROB (
     input wire [ROB_SIZE_BIT-1:0] rs_rob_id, // the ROB id of the instruction
 
     // interaction with LSB
+    output wire write_back,     // write back signal
+
     input wire lsb_fi, // the output signal of LSB
     input wire [31:0] lsb_value, // the output value of LSB
     // input wire [4:0] lsb_rd_id, // the rd id of the instruction
@@ -48,17 +51,19 @@ module ROB (
     reg [ROB_SIZE_BIT-1:0] head;
     reg [ROB_SIZE_BIT-1:0] tail;
     reg [31:0] res[ROB_SIZE_BIT-1:0];
-    reg [31:0] addr[ROB_SIZE_BIT-1:0];
+    reg [31:0] inst_addr[ROB_SIZE_BIT-1:0];
     // reg [4:0] rd_id[ROB_SIZE_BIT-1:0];
     reg [ROB_TYPE_BIT-1:0] type[ROB_SZIE_BIT-1:0];
 
-    always @(posedge clk_in or posedge rst_in) begin
-        if (rst_in) begin
-            
-        end
-        else if (rdy_in) begin
-
-        end
+always @(posedge clk_in or posedge rst_in) 
+begin
+    if (rst_in) begin
+        
     end
+    else if (rdy_in) 
+    begin
+
+    end
+end
 
 endmodule
