@@ -15,7 +15,7 @@ module Decoder (
     // else insFetcher will fetch the next instruction by the next_PC
 
     // interaction with RF
-    // the RF should return the information before the rob update, because the rob has not already deleted that instruction
+    // the RF should return the information after the rob update, because the rob has already deleted that instruction
     input wire [31:0]               rs1_val,
     input wire [31:0]               rs2_val,
     input wire                      rs1_has_dep,
@@ -109,7 +109,7 @@ module Decoder (
     assign lsb_rob_id = rob_id;
 
     wire [6:0] opcode = inst[6:0];
-    wire [4:0] rd = inst[11:7];
+    wire [4:0] rd = opcode != BR ? inst[11:7] : {4{1'b0} , br_pred};
     wire [4:0] rs1 = inst[19:15];
     wire [4:0] rs2 = inst[24:20];
     wire [2:0] func3 = inst[14:12];
@@ -206,7 +206,17 @@ begin
         begin
             rob_fi <= tmp_rob_fi;
             rob_id <= rob_vacant_id;
-            rob_addr <= inst_addr;
+            // rob_addr <= inst_addr;
+            if(opcode == BR) begin
+                // the reverse of the br_pred
+                if(br_pred) begin
+                    rob_addr <= inst_addr + 4;
+                end
+                else begin
+                    rob_addr <= inst_addr + {{19{immB[12]}}, immB};
+                end
+            end
+            
             rob_reg_id <= rd;
 
 
@@ -263,7 +273,7 @@ begin
                     rob_value <= {immU, 12'b0};
                 end
                 LOAD: begin
-                    rob_type <= `ROB_LD;
+                    rob_type <= `ROB_REG;
                     //load
                 end
                 STORE: begin
