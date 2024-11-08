@@ -8,7 +8,11 @@
 //the size of LSB and RS is the same as ROB_SIZE
 
 `define ROB_TYPE_BIT 2
-// 0 : wait; 1 : executing; 2 : finished 
+
+`define ROB_ST 2'b11
+`define ROB_LD 2'b00
+`define ROB_BR 2'b01
+`define ROB_REG 2'b10
 
 `define RS_SIZE 8
 `define RS_SIZE_BIT 3

@@ -9,8 +9,10 @@ module Decoder (
     input wire [31:0] inst,	    // instruction input
     input wire [31:0] inst_addr,// instruction address input
     output wire is_stall,		// stall signal
-    output reg next_PC,
-
+    // output wire is_set_pc,		// set pc signal
+    output wire next_PC,
+    // if stall, the insFetcher won't fetch the next instruction, and the instruction will be fetched again in the next cycle
+    // else insFetcher will fetch the next instruction by the next_PC
 
     // interaction with RF
     // the RF should return the information before the rob update, because the rob has not already deleted that instruction
@@ -36,13 +38,13 @@ module Decoder (
     //TO
     input wire                      rob_full,		// ROB full signal
     input wire                      rob_clear,		// clear the ROB
-    input wire                      rob_id,			// the ROB id of the instruction
+    input wire                      rob_vacant_id,			// the ROB id of the instruction
     output reg                     rob_input,      // the input signal of ROB
+    output reg                     rob_fi,         // is the instruction has finished, like lui
     output reg [31:0]              rob_value,      // in case that the ins is a lui etc.
     output reg [31:0]              rob_addr,       // the address of the instruction, for restarting ROB
     output reg [ROB_TYPE_BIT-1:0]  rob_type,       // the type of the instruction
     output reg [4:0]               rob_reg_id,     // the reg id of the instruction
-    output reg                     rob_fi,         // is the instruction has finished, like lui
 
 
 
@@ -82,7 +84,6 @@ module Decoder (
     2. query RF and ROB for information
     3. issue for the next cycle 
     */
-    assign is_stall = !inst_input || rob_full || rs_full || lsb_full;
 
     reg [31:0] r1_val;
     reg [31:0] r2_val;
@@ -90,18 +91,22 @@ module Decoder (
     reg r2_has_dep;
     reg [ROB_SIZE_BIT-1:0] r1_dep;  
     reg [ROB_SIZE_BIT-1:0] r2_dep;
+    reg [`ROB_SIZE_BIT-1:0] rob_id;
+
     assign rs_r1_val = r1_val;
     assign rs_r2_val = r2_val;
     assign rs_r1_has_dep = r1_has_dep;
     assign rs_r2_has_dep = r2_has_dep;
     assign rs_r1_dep = r1_dep;
     assign rs_r2_dep = r2_dep;
+    assign rs_rob_id = rob_id;
     assign lsb_r1_val = r1_val;
     assign lsb_r2_val = r2_val;
     assign lsb_r1_has_dep = r1_has_dep;
     assign lsb_r2_has_dep = r2_has_dep;
     assign lsb_r1_dep = r1_dep;
     assign lsb_r2_dep = r2_dep;
+    assign lsb_rob_id = rob_id;
 
     wire [6:0] opcode = inst[6:0];
     wire [4:0] rd = inst[11:7];
@@ -112,7 +117,7 @@ module Decoder (
     wire [11:0] immI = inst[31:20];
     wire [11:0] immS = {inst[31:25], inst[11:7]};
     wire [12:0] immB = {inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
-    wire [20:0] immU = {inst[31:12], 12'b0};
+    wire [32:0] immU = {inst[31:12], 12'b0};
     wire [20:0] immJ = {inst[31], inst[19:12], inst[20], inst[30:21], 1'b0};
     localparam BR = 7'b1100011;
     localparam JALR = 7'b1100111;
@@ -124,12 +129,27 @@ module Decoder (
     localparam ARITH = 7'b0110011;
     localparam ARITHI = 7'b0010011;
 
+    // interaction with the insFetcher
+    wire need_set_PC = opcode == JAL || opcode == JALR || opcode == BR;
+    wire next_PC_JAL = inst_addr + {{11{immJ[20]}}, immJ};
+    wire next_PC_JALR = tmp_r1_val + {{20{immI[11]}}, immI};
+
+    wire br_pred = 1;
+    wire next_PC_BR = br_pred ?  inst_addr + {{19{immB[12]}}, immB} :inst_addr + 4 ;
+
+
+    // wire br_pred = br_predictor(); has not finished yet
+
+    assign is_stall = !inst_input || rob_clear || rob_full || rs_full || lsb_full || (opcode == JALR && tmp_r1_has_dep);
+    assign next_PC = need_set_PC ? (opcode == JAL ? next_PC_JAL : (opcode == BR ? next_PC_BR : next_PC_JALR)) : inst_addr + 4;
+    
+
 
     // fetch the information from RF & ROB  
     wire need_r1 = opcode == ARITH || opcode == ARITHI || opcode == LOAD || opcode == STORE || opcode == BR ;
     wire need_r2 = opcode == ARITH || opcode == STORE || opcode == BR;
 
-    wire need_rob = 1;
+    wire need_rob = is_stall;
     wire need_rs = opcode == ARITH || opcode == ARITHI || opcode == BR  || opcode == JAL || opcode == JALR;
     wire need_lsb = opcode == LOAD || opcode == STORE;
     wire tmp_r1_val;
@@ -149,6 +169,8 @@ module Decoder (
     // assign tmp_r2_val = rs2_has_dep ? (rob_qry2_value) : rs2_val;
     assign tmp_r2_val = rs2_has_dep ? (rob_qry2_fi ? rob_qry2_value : 0) : rs2_val;
     
+    // tell rob information to puhs 
+    wire tmp_rob_fi = opcode == AUIPC || opcode == LUI || opcode == JAL || opcode == JALR;
 
 always @(posedge clk_in or posedge rst_in) 
 begin
@@ -163,6 +185,7 @@ begin
         r2_has_dep <= 0;
         r1_dep <= 0;
         r2_dep <= 0;
+        rob_id <= 0;
     end
     else if (rdy_in) 
     begin
@@ -177,9 +200,16 @@ begin
             r2_has_dep <= 0;
             r1_dep <= 0;
             r2_dep <= 0;
+            rob_id <= 0;
         end
         else
         begin
+            rob_fi <= tmp_rob_fi;
+            rob_id <= rob_vacant_id;
+            rob_addr <= inst_addr;
+            rob_reg_id <= rd;
+
+
             r1_has_dep <= tmp_r1_has_dep;
             r2_has_dep <= tmp_r2_has_dep;
             r1_dep <= tmp_r1_dep;
@@ -200,33 +230,44 @@ begin
                 r2_val <= tmp_r2_val;
             case(opcode)
                 ARITH: begin
+                    rob_type <= `ROB_REG;
                     //arithmetic
                 end
                 ARITHI: begin
+                    rob_type <= `ROB_REG;
                     //arithmetic immediate
                     rs2_val <= {{20{immI[11]}}, immI}
                 end
                 BR: begin
+                    rob_type <= `ROB_BR;
                     //branch
                 end
                 JALR: begin
+                    rob_type <= `ROB_REG;
                     //jump and link register
+                    rob_value <= inst_addr + 4;
                 end
                 JAL: begin
+                    rob_type <= `ROB_REG;
                     //jump and link
+                    rob_value <= inst_addr + 4;
                 end
                 AUIPC: begin
+                    rob_type <= `ROB_REG;
                     //add upper immediate to pc
                     rob_value <= inst_addr + {immU, 12'b0};
                 end
                 LUI: begin
+                    rob_type <= `ROB_REG;
                     //load upper immediate
                     rob_value <= {immU, 12'b0};
                 end
                 LOAD: begin
+                    rob_type <= `ROB_LD;
                     //load
                 end
                 STORE: begin
+                    rob_type <= `ROB_ST;
                     //store
                 end
             endcase
