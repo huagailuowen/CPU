@@ -57,6 +57,7 @@ module ROB (
     output wire [`ROB_SIZE_BIT-1:0] update_dep;
 
 );
+    wire rob_empty = rob_size == 0;
     reg [ROB_SIZE_BIT-1:0] head;
     reg [ROB_SIZE_BIT-1:0] tail; 
     reg [4:0] rd_id[0:`ROB_SIZE-1];
@@ -71,7 +72,7 @@ module ROB (
     reg [5:0] rob_size;
 
     localparam ROB_SIZE_MAX = 6'b100000;
-    assign rob_full = rob_size == ROB_SIZE_MAX || (rob_size == ROB_SIZE_MAX - 1 && !finished[head] && rob_input);
+    assign rob_full = rob_size == ROB_SIZE_MAX || (rob_size == ROB_SIZE_MAX - 1 && !(finished[head] && !rob_empty) && rob_input);
     assign rob_free_id = rob_clear ? 0 : (rob_input ? tail + 1 : tail);
     
     // handle the query, 
@@ -80,11 +81,11 @@ module ROB (
     assign rob_qry2_ready = (rob_input && tail == rob_qry2_id)? rob_fi : is_finished[rob_qry2_id];
     assign rob_qry2_value = (rob_input && tail == rob_qry2_id)? rob_value : res[rob_qry2_id];
     // interaction with RF
-    assign is_update_val = finished[head] && type[head] == `ROB_REG;
+    assign is_update_val = (finished[head] && !rob_empty) && (type[head] == `ROB_REG || type[head] == `ROB_REGI);
     assign update_val_id = rd_id[head];
     assign update_val_dep = head;
     assign update_val = res[head];
-    assign is_update_dep = rob_input && rob_type == `ROB_REG; 
+    assign is_update_dep = rob_input && (rob_type == `ROB_REG || rob_type == `ROB_REGI); 
     assign update_dep_id = rob_reg_id;
     assign update_dep = tail;
 
@@ -120,13 +121,13 @@ begin
             end
         end
         else begin
-            if(rob_input && !finished[head]) begin
+            if(rob_input && !(finished[head] && !rob_empty)) begin
                 rob_size <= rob_size + 1;
             end
-            else if(!rob_input && finished[head]) begin
+            else if(!rob_input && (finished[head] && !rob_empty)) begin
                 rob_size <= rob_size - 1;
             end
-            write_back <= finished[head] && type[head] == `ROB_ST;
+            write_back <= (finished[head] && !rob_empty) && type[head] == `ROB_ST;
             if(rob_input) begin
                 inst_addr[tail] <= rob_addr;
                 rd_id[tail] <= rob_reg_id;
@@ -143,7 +144,7 @@ begin
                 finished[lsb_rob_id] <= 1;
                 res[lsb_rob_id] <= lsb_value;
             end 
-            if(finished[head]) begin
+            if((finished[head] && !rob_empty)) begin
                 head <= head + 1;
                 case type[head]
                     `ROB_BR : begin

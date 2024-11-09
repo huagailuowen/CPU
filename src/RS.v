@@ -16,15 +16,29 @@ module RS(
     input wire rs_r2_has_dep,  // does rs2 has dependency
     input wire [ROB_SIZE_BIT-1:0] rs_r1_dep,  // the ROB id of the dependency
     input wire [ROB_SIZE_BIT-1:0] rs_r2_dep,  // the ROB id of the dependency
+    // input wire [31:0] rs_imm,  // the immediate value of the instruction
     input wire [ROB_SIZE_BIT-1:0] rs_rob_id, // the ROB id of the instruction
     // input wire [4:0] rs_rd_id,  // the rd id of the instruction
 
     // output to the cd_bus
-    output wire rs_fi,
-    output wire rs_value,
-    output wire [ROB_SIZE_BIT-1:0] rs_rob_id,
+    // output wire rs_fi,
+    // output wire rs_value,
+    // output wire [ROB_SIZE_BIT-1:0] rs_rob_id,
+    // !!!!!WARNING!!!!!
+    // these is alu's output, not rs's responsibility
+    // replace by the alu 
 
+
+    // interaction with ALU
+    output wire alu_input,
+    output wire [`RS_TYPE_BIT-1:0] arith_type,
+    output wire [31:0] r1_val,
+    output wire [31:0] r2_val,
+    output wire [`ROB_SIZE_BIT-1:0] inst_rob_id
 );
+    localparam RS_SIZE_MAX = 6'b000100;
+    reg [5:0] rs_size;
+    assign rs_full = (rs_size == RS_SIZE_MAX) || (rs_size + 1 == RS_SIZE_MAX && inst_input && !merge_exe[0]);
 
     reg busy[0:`RS_SIZE-1];
     reg [31:0] r1_val[0:`RS_SIZE-1];
@@ -33,22 +47,74 @@ module RS(
     reg r2_has_dep[0:`RS_SIZE-1];
     reg [ROB_SIZE_BIT-1:0] r1_dep[0:`RS_SIZE-1];
     reg [ROB_SIZE_BIT-1:0] r2_dep[0:`RS_SIZE-1];
+    // reg [31:0] imm[0:`RS_SIZE-1];
+    // do not need imm, alreay store in r2_val
     reg [RS_TYPE_BIT-1:0] type[0:`RS_SIZE-1];
 
     wire is_free[0:`RS_SIZE-1];
     wire [`RS_SIZE_BIT-1:0] free_id[0:`RS_SIZE-1];
     wire is_exe[0:`RS_SIZE-1];
     wire [`RS_SIZE_BIT-1:0] exe_id[0:`RS_SIZE-1];
+    
+    wire merge_free[0:`RS_SIZE-1];
+    wire [`RS_SIZE_BIT-1:0] merge_free_id[0:`RS_SIZE-1];
+    wire merge_exe[0:`RS_SIZE-1];
+    wire [`RS_SIZE_BIT-1:0] merge_exe_id[0:`RS_SIZE-1];
     //use the design of tree array to find the free id and exe id
-
+    genvar i;
+    generate
+        for(i = 0; i < `RS_SIZE; i = i + 1)
+        begin
+            assign is_free[i] = ~busy[i];
+            assign free_id[i] = i;
+            assign is_exe[i] = busy[i] && !r1_has_dep[i] && !r2_has_dep[i];
+            assign exe_id[i] = i;
+        end
+        for(i = 0; i < `RS_SIZE/2; i = i + 1)
+        begin
+            assign merge_free[i] = is_free[i<<1] && is_free[i<<1|1];
+            assign merge_free_id[i] = is_free[i<<1] ? free_id[i<<1] : free_id[i<<1|1];
+            assign merge_exe[i] = is_exe[i<<1] && is_exe[i<<1|1];
+            assign merge_exe_id[i] = is_exe[i<<1] ? exe_id[i<<1] : exe_id[i<<1|1];
+        end
+    endgenerate
+    assign alu_input = merge_exe[0];
+    assign arith_type = type[merge_exe_id[0]];
+    assign r1_val = r1_val[merge_exe_id[0]];
+    assign r2_val = r2_val[merge_exe_id[0]];
+    assign inst_rob_id = rs_rob_id[merge_exe_id[0]];
+    integer i;
 always @(posedge clk_in or posedge rst_in) 
 begin
-    if (rst_in) begin
-        
+    if (rst_in || (rdy_in && rob_clear)) begin
+        for(i = 0; i < `RS_SIZE; i = i + 1) begin
+            busy[i] <= 0;
+            r1_val[i] <= 0;
+            r2_val[i] <= 0;
+            r1_has_dep[i] <= 0;
+            r2_has_dep[i] <= 0;
+            r1_dep[i] <= 0;
+            r2_dep[i] <= 0;
+            type[i] <= 0;
+            rs_size <= 0;
+        end
     end
     else if (rdy_in) 
     begin
-        
+        rs_size <= rs_size + merge_exe[0] - inst_input;
+        if(inst_input) begin
+            busy[merge_free_id[0]] <= 1;
+            r1_val[merge_free_id[0]] <= rs_r1_val;
+            r2_val[merge_free_id[0]] <= rs_r2_val;
+            r1_has_dep[merge_free_id[0]] <= rs_r1_has_dep;
+            r2_has_dep[merge_free_id[0]] <= rs_r2_has_dep;
+            r1_dep[merge_free_id[0]] <= rs_r1_dep;
+            r2_dep[merge_free_id[0]] <= rs_r2_dep;
+            type[merge_free_id[0]] <= rs_type;
+        end
+        if(merge_exe[0]) begin
+            busy[merge_exe_id[0]] <= 0;
+        end
     end
 end
 

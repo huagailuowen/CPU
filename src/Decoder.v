@@ -58,6 +58,7 @@ module Decoder (
     output wire                     rs_r2_has_dep,
     output wire [ROB_SIZE_BIT-1:0]  rs_r1_dep,
     output wire [ROB_SIZE_BIT-1:0]  rs_r2_dep,
+    // output wire [31:0]              rs_imm,
     output wire [ROB_SIZE_BIT-1:0]  rs_rob_id,
     // output wire [4:0]               rs_rd_id,
 
@@ -72,6 +73,7 @@ module Decoder (
     output wire                     lsb_r2_has_dep,
     output wire [ROB_SIZE_BIT-1:0]  lsb_r1_dep,
     output wire [ROB_SIZE_BIT-1:0]  lsb_r2_dep,
+    output wire [31:0]              lsb_imm,
     output wire [ROB_SIZE_BIT-1:0]  lsb_rob_id,
     // output wire [4:0]               lsb_rd_id
 
@@ -91,14 +93,16 @@ module Decoder (
     reg r2_has_dep;
     reg [ROB_SIZE_BIT-1:0] r1_dep;  
     reg [ROB_SIZE_BIT-1:0] r2_dep;
+    reg [31:0] imm;
     reg [`ROB_SIZE_BIT-1:0] rob_id;
 
     assign rs_r1_val = r1_val;
-    assign rs_r2_val = r2_val;
+    assign rs_r2_val = rob_type == `ROB_REGI ? imm : r2_val;
     assign rs_r1_has_dep = r1_has_dep;
     assign rs_r2_has_dep = r2_has_dep;
     assign rs_r1_dep = r1_dep;
     assign rs_r2_dep = r2_dep;
+    // assign rs_imm = imm;
     assign rs_rob_id = rob_id;
     assign lsb_r1_val = r1_val;
     assign lsb_r2_val = r2_val;
@@ -107,6 +111,7 @@ module Decoder (
     assign lsb_r1_dep = r1_dep;
     assign lsb_r2_dep = r2_dep;
     assign lsb_rob_id = rob_id;
+    assign lsb_imm = imm;
 
     wire [6:0] opcode = inst[6:0];
     wire [4:0] rd = opcode != BR ? inst[11:7] : {4{1'b0} , br_pred};
@@ -115,10 +120,12 @@ module Decoder (
     wire [2:0] func3 = inst[14:12];
     wire [6:0] func7 = inst[31:25];
     wire [11:0] immI = inst[31:20];
+    wire [4:0] immI_star = inst[24:20];
     wire [11:0] immS = {inst[31:25], inst[11:7]};
     wire [12:0] immB = {inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
     wire [32:0] immU = {inst[31:12], 12'b0};
     wire [20:0] immJ = {inst[31], inst[19:12], inst[20], inst[30:21], 1'b0};
+
     localparam BR = 7'b1100011;
     localparam JALR = 7'b1100111;
     localparam JAL = 7'b1101111;
@@ -126,8 +133,9 @@ module Decoder (
     localparam LUI = 7'b0110111;
     localparam LOAD = 7'b0000011;
     localparam STORE = 7'b0100011;
-    localparam ARITH = 7'b0110011;
-    localparam ARITHI = 7'b0010011;
+    localparam ARITH = 7'b0110011; //R
+    localparam ARITHI = 7'b0010011; //
+    wire is_arithi_star = opcode == ARITHI && (func3 == 3'b001 || func3 == 3'b101);
 
     // interaction with the insFetcher
     wire need_set_PC = opcode == JAL || opcode == JALR || opcode == BR;
@@ -228,7 +236,8 @@ begin
             rs_input <= need_rs;
             rs_type[4] <= opcode == BR;
             rs_type[3:1] <= func3;
-            rs_type[0] <= func7[5];
+            rs_type[0] <= (opcode == BR || (opcode == ARITHI && !is_arithi_star)) 0 : func7[5];
+            // U&J won't be in RS
             lsb_input <= need_lsb;
             lsb_type[3] <= opcode == STORE;
             lsb_type[2:0] <= func3;
@@ -244,7 +253,9 @@ begin
                     //arithmetic
                 end
                 ARITHI: begin
-                    rob_type <= `ROB_REG;
+                    rob_type <= `ROB_REGI;
+                    // imm <= id{20'b0 , immI};
+                    imm <= is_arithi_star ? {27'b0, immI_star} : {20'b0, immI};
                     //arithmetic immediate
                     rs2_val <= {{20{immI[11]}}, immI}
                 end
@@ -274,10 +285,12 @@ begin
                 end
                 LOAD: begin
                     rob_type <= `ROB_REG;
+                    imm <= immI;
                     //load
                 end
                 STORE: begin
                     rob_type <= `ROB_ST;
+                    imm <= immS;
                     //store
                 end
             endcase

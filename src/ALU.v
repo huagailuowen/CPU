@@ -13,10 +13,11 @@ module ALU (
     output reg                      alu_fi,
     output reg [`ROB_SIZE_BIT-1:0]  cur_rob_id,
     output reg [31:0]               res
+
+    input wire rob_clear, // clear the ROB
 );
 // our alu only need one cycle to finish the calculation
     //[1:is_branch] [3:func3] [1:func7]
-    
     localparam ADD = 4'b0000;
     localparam SUB = 4'b0001;
     localparam AND = 4'b1110;
@@ -37,7 +38,7 @@ module ALU (
 
 always @(posedge clk_in or posedge rst_in) 
 begin
-    if (rst_in) begin
+    if (rst_in || (rdy_in && rob_clear)) begin
         alu_fi <= 0;
         cur_rob_id <= 0;
         res <= 0;

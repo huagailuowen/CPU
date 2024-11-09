@@ -19,6 +19,7 @@ module LSB(
     input wire lsb_r2_has_dep,  // does lsb2 has dependency
     input wire [ROB_SIZE_BIT-1:0] lsb_r1_dep,  // the ROB id of the dependency
     input wire [ROB_SIZE_BIT-1:0] lsb_r2_dep,  // the ROB id of the dependency
+    input wire [31:0] lsb_imm,  // the immediate value of the instruction
     input wire [ROB_SIZE_BIT-1:0] lsb_rob_id, // the ROB id of the instruction
     // input wire [4:0] lsb_rd_id,  // the rd id of the instruction
 
@@ -27,6 +28,8 @@ module LSB(
     output wire lsb_fi,
     output wire lsb_value,
     output wire [ROB_SIZE_BIT-1:0] lsb_rob_id,
+
+    // interaction with Cache
 
 );
 
@@ -38,7 +41,7 @@ module LSB(
     reg [`ROB_SIZE_BIT-1:0] r1_dep[0:`LSB_SIZE-1];
     reg [`ROB_SIZE_BIT-1:0] r2_dep[0:`LSB_SIZE-1];
     reg [`LSB_TYPE_BIT-1:0] type[0:`LSB_SIZE-1];
-
+    reg [31:0] imm[0:`RS_SIZE-1];
     reg [`LSB_SIZE_BIT-1:0] head, tail;
 
 

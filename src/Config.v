@@ -10,7 +10,7 @@
 `define ROB_TYPE_BIT 2
 
 `define ROB_ST 2'b11
-`define ROB_LD 2'b00
+`define ROB_REGI 2'b00
 `define ROB_BR 2'b01
 `define ROB_REG 2'b10
 
