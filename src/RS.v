@@ -21,9 +21,12 @@ module RS(
     // input wire [4:0] rs_rd_id,  // the rd id of the instruction
 
     // output to the cd_bus
-    // output wire rs_fi,
-    // output wire rs_value,
-    // output wire [ROB_SIZE_BIT-1:0] rs_rob_id,
+    input wire rs_fi,
+    input wire rs_value,
+    input wire [ROB_SIZE_BIT-1:0] rs_rob_id,
+    input wire lsb_fi,
+    input wire lsb_value,
+    input wire [ROB_SIZE_BIT-1:0] lsb_rob_id,
     // !!!!!WARNING!!!!!
     // these is alu's output, not rs's responsibility
     // replace by the alu 
@@ -61,6 +64,12 @@ module RS(
     wire merge_exe[0:`RS_SIZE-1];
     wire [`RS_SIZE_BIT-1:0] merge_exe_id[0:`RS_SIZE-1];
     //use the design of tree array to find the free id and exe id
+
+    wire tmp_rs_r1_has_dep = (rs_fi && rs_r1_has_dep && rs_rob_id == rs_r1_dep) ? 0 : ((lsb_fi && rs_r1_has_dep && lsb_rob_id == rs_r1_dep) ? 0 : rs_r1_has_dep);
+    wire tmp_rs_r1_val = (rs_fi && rs_r1_has_dep && rs_rob_id == rs_r1_dep) ? rs_value : ((lsb_fi && rs_r1_has_dep && lsb_rob_id == rs_r1_dep) ? lsb_value : rs_r1_val);
+    wire tmp_rs_r2_has_dep = (rs_fi && rs_r2_has_dep && rs_rob_id == rs_r2_dep) ? 0 : ((lsb_fi && rs_r2_has_dep && lsb_rob_id == rs_r2_dep) ? 0 : rs_r2_has_dep);
+    wire tmp_rs_r2_val = (rs_fi && rs_r2_has_dep && rs_rob_id == rs_r2_dep) ? rs_value : ((lsb_fi && rs_r2_has_dep && lsb_rob_id == rs_r2_dep) ? lsb_value : rs_r2_val);    
+
     genvar i;
     generate
         for(i = 0; i < `RS_SIZE; i = i + 1)
@@ -92,7 +101,7 @@ begin
             r1_val[i] <= 0;
             r2_val[i] <= 0;
             r1_has_dep[i] <= 0;
-            r2_has_dep[i] <= 0;
+            r2_has_dep[i] <= 0;  
             r1_dep[i] <= 0;
             r2_dep[i] <= 0;
             type[i] <= 0;
@@ -104,16 +113,34 @@ begin
         rs_size <= rs_size + merge_exe[0] - inst_input;
         if(inst_input) begin
             busy[merge_free_id[0]] <= 1;
-            r1_val[merge_free_id[0]] <= rs_r1_val;
-            r2_val[merge_free_id[0]] <= rs_r2_val;
-            r1_has_dep[merge_free_id[0]] <= rs_r1_has_dep;
-            r2_has_dep[merge_free_id[0]] <= rs_r2_has_dep;
+            r1_val[merge_free_id[0]] <= tmp_rs_r1_val;
+            r2_val[merge_free_id[0]] <= tmp_rs_r2_val;
+            r1_has_dep[merge_free_id[0]] <= tmp_rs_r1_has_dep;
+            r2_has_dep[merge_free_id[0]] <= tmp_rs_r2_has_dep;
             r1_dep[merge_free_id[0]] <= rs_r1_dep;
             r2_dep[merge_free_id[0]] <= rs_r2_dep;
             type[merge_free_id[0]] <= rs_type;
         end
         if(merge_exe[0]) begin
             busy[merge_exe_id[0]] <= 0;
+        end
+        for(i = 0; i < `RS_SIZE; i = i + 1) begin
+            if(lsb_fi && r1_has_dep[i] && lsb_rob_id == r1_dep[i]) begin
+                r1_val[i] <= lsb_value;
+                r1_has_dep[i] <= 0;
+            end
+            if(lsb_fi && r2_has_dep[i] && lsb_rob_id == r2_dep[i]) begin
+                r2_val[i] <= lsb_value;
+                r2_has_dep[i] <= 0;
+            end
+            if(rs_fi && r1_has_dep[i] && rs_rob_id == r1_dep[i]) begin
+                r1_val[i] <= rs_value;
+                r1_has_dep[i] <= 0;
+            end
+            if(rs_fi && r2_has_dep[i] && rs_rob_id == r2_dep[i]) begin
+                r2_val[i] <= rs_value;
+                r2_has_dep[i] <= 0;
+            end
         end
     end
 end

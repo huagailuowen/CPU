@@ -10,6 +10,7 @@ module ROB (
 
     output wire rob_full, // ROB full signal
     output wire [ROB_SIZE_BIT-1:0]rob_free_id, // the ROB id of the next instruction
+    output wire [ROB_SIZE_BIT-1:0] rob_head_id, // the ROB id of the head instruction
     output reg rob_clear, // clear the ROB
     output reg rob_rst_addr, // the address of the instruction, for restarting ROB
 
@@ -74,14 +75,15 @@ module ROB (
     localparam ROB_SIZE_MAX = 6'b100000;
     assign rob_full = rob_size == ROB_SIZE_MAX || (rob_size == ROB_SIZE_MAX - 1 && !(finished[head] && !rob_empty) && rob_input);
     assign rob_free_id = rob_clear ? 0 : (rob_input ? tail + 1 : tail);
-    
+    wire is_pop = finished[head] && !rob_empty;
+    assign rob_head_id = rob_clear ? 0 : (is_pop ? head+1 : head);
     // handle the query, 
     assign rob_qry1_ready = (rob_input && tail == rob_qry1_id)? rob_fi : is_finished[rob_qry1_id];
     assign rob_qry1_value = (rob_input && tail == rob_qry1_id)? rob_value : res[rob_qry1_id];
     assign rob_qry2_ready = (rob_input && tail == rob_qry2_id)? rob_fi : is_finished[rob_qry2_id];
     assign rob_qry2_value = (rob_input && tail == rob_qry2_id)? rob_value : res[rob_qry2_id];
     // interaction with RF
-    assign is_update_val = (finished[head] && !rob_empty) && (type[head] == `ROB_REG || type[head] == `ROB_REGI);
+    assign is_update_val = is_pop && (type[head] == `ROB_REG || type[head] == `ROB_REGI);
     assign update_val_id = rd_id[head];
     assign update_val_dep = head;
     assign update_val = res[head];
@@ -121,13 +123,13 @@ begin
             end
         end
         else begin
-            if(rob_input && !(finished[head] && !rob_empty)) begin
+            if(rob_input && !is_pop) begin
                 rob_size <= rob_size + 1;
             end
-            else if(!rob_input && (finished[head] && !rob_empty)) begin
+            else if(!rob_input && is_pop) begin
                 rob_size <= rob_size - 1;
             end
-            write_back <= (finished[head] && !rob_empty) && type[head] == `ROB_ST;
+            write_back <= is_pop && type[head] == `ROB_ST;
             if(rob_input) begin
                 inst_addr[tail] <= rob_addr;
                 rd_id[tail] <= rob_reg_id;
@@ -144,7 +146,7 @@ begin
                 finished[lsb_rob_id] <= 1;
                 res[lsb_rob_id] <= lsb_value;
             end 
-            if((finished[head] && !rob_empty)) begin
+            if(is_pop) begin
                 head <= head + 1;
                 case type[head]
                     `ROB_BR : begin

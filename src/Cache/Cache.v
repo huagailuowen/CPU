@@ -15,10 +15,11 @@ module Cache(
     input wire need_data, // if need data
     input wire is_write, // if write
     input wire [31:0] data_addr,
+    input wire [31:0] data_in, // the data
     input wire [2:0] work_type, 
     // first bit: signed or unsigned (0: unsigned, 1: signed)
     // second 2 bit : 00: byte, 01: half word, 10: word
-    
+    output wire data_handle, // if the data_work is handled
     output wire data_ready, // if the data is ready
     output wire [31:0] data_out, // the data
     

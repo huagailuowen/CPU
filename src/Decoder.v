@@ -255,7 +255,7 @@ begin
                 ARITHI: begin
                     rob_type <= `ROB_REGI;
                     // imm <= id{20'b0 , immI};
-                    imm <= is_arithi_star ? {27'b0, immI_star} : {20'b0, immI};
+                    imm <= is_arithi_star ? {27{immI_star[4]}, immI_star} : {20{immI[11]}, immI};
                     //arithmetic immediate
                     rs2_val <= {{20{immI[11]}}, immI}
                 end
@@ -285,12 +285,12 @@ begin
                 end
                 LOAD: begin
                     rob_type <= `ROB_REG;
-                    imm <= immI;
+                    imm <= {20{immI[11]} , immI};
                     //load
                 end
                 STORE: begin
                     rob_type <= `ROB_ST;
-                    imm <= immS;
+                    imm <= {20{immS[11]} , immS};
                     //store
                 end
             endcase
