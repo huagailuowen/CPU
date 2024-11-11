@@ -3,54 +3,114 @@ module MemCtrl(
     input wire rst_in,  // reset signal
     input wire rdy_in,  // ready signal, pause cpu when low
 
+    input wire rob_clear,
+    // the memory write back operation should not be influence by the rob_clear signal
+    //!!!!!!!!! WARNING !!!!!!!!! 
+
+
     // interaction with the outside
-    input wire valid, // if need to work
+    input wire new_task, // if need to start a new work
     input wire is_write, // if write
     input wire [31:0] addr, // the address
-
     input wire [31:0] data_in, // the data, if write
     output wire [31:0] data_out, // the data
-    output reg ready_out, // if the data is ready
-
     input wire [2:0] work_type;
+
+    output wire real_ready_out, // if the data is ready
+    output reg is_working, // if has current work
+
     // first bit: signed or unsigned (0: unsigned, 1: signed)
     // second 2 bit : 00: byte, 01: half word, 10: word
 
 
     // interaction with the memory
-    output wire mem_valid, // if need to work
-    output wire mem_is_write, // if write
-    output wire [31:0] mem_addr, // the address
-    input wire [7:0] mem_data_in, // the data, if write
-    output wire [7:0] mem_data_out, // the data
-
-    
+    input  wire [ 7:0]          mem_din,		// data input bus
+    output wire [ 7:0]          mem_dout,		// data output bus
+    output wire [31:0]          mem_a,			// address bus (only 17:0 is used)
+    output wire                 mem_wr,			// write/read signal (1 for write)
+	input  wire                 io_buffer_full, // 1 if uart buffer is full
+    // output wire mem_valid, // if need to work
+    // output wire mem_is_write, // if write
+    // output wire [31:0] mem_addr, // the address
+    // input wire [7:0] mem_data_in, // the data, if write
+    // output wire [7:0] mem_data_out, // the data
+ 
 );
+    assign mem_a = new_task ? addr : cur_addr + {cur_state, 3'b0};
+    assign mem_wr = new_task ? is_write : cur_is_write;
+    wire [4:0] start_pos = cur_state << 3;
+    wire [4:0] end_pos = start_pos + 7;   
+    assign mem_dout = new_task ? data_in[7:0] : cur_data_in[end_pos:start_pos];
 
-    reg [2:0] cur_work_type;
+    reg ready_out, // if the data is ready
+    assign real_ready_out = (rob_clear && !cur_is_write) ? 0 : ready_out;
     reg cur_is_write;
     reg [31:0] cur_addr;
     reg [31:0] cur_data_in;
     reg [31:0] cur_data_out;
-    // reg cur_ready_out;
-    // ready_out is already a reg
-    reg is_work;
-    reg [1:0]cur_len;
-    // how many bit has been read
+    reg [2:0] cur_work_type;
+    reg [1:0]cur_state;
+    // the read offset
+
+    wire data_out_b = {{24{mem_dout[7]}}, mem_dout[7:0]};
+    wire data_out_bu = {{24'b0}, mem_out[7:0]};
+    wire data_out_h = {{16{mem_dout[7]}}, mem_dout[7:0], cur_data_out[7:0]};
+    wire data_out_hu = {{16'b0}, mem_out[7:0], cur_data_out[7:0]};
+    wire data_out_w = {{mem_dout[7:0], cur_data_out[23:0]}};   
+
+    assign data_out = (!cur_work_type[2]) ? 
+        ((cur_work_type[1:0] == 2'b00) ? data_out_b :
+        (cur_work_type[1:0] == 2'b01) ? data_out_h :
+        data_out_w ):
+        ((cur_work_type[1:0] == 2'b00) ? data_out_bu :
+        (cur_work_type[1:0] == 2'b01) ? data_out_hu :
+        0);
+    
 
 always @(posedge clk_in)
 begin
     if (rst_in)
     begin
-        cur_work_type <= 0;
+        is_working <= 0;
+        ready_out <= 0;
     end
-else if (!rdy_in)
+else if (rdy_in && rob_clear)
     begin
-      
+        if(is_working && !cur_is_write) begin
+            // stop anything when the rob is clear
+            // so the new_task must be low bit
+            is_working <= 0;
+            ready_out <= 0;
+        end
     end
-else
+else if (rdy_in)
     begin
-      
+        if(is_working && new_task) begin
+            $display("Warning: new task is coming while the last one is not finished");
+        end
+        if(is_working) begin
+            if(cur_state == work_type[1:0]) begin
+                is_working <= 0;
+                ready_out <= !cur_is_write;
+            end
+            cur_data_out[end_pos:start_pos] <= mem_dout;
+        end 
+        if(new_task) begin
+            cur_is_write <= is_write;
+            cur_addr <= addr;
+            cur_data_in <= data_in;
+            cur_work_type <= work_type;
+            cur_state <= 2'b01;
+            
+            if(work_type[1:0] == 2'b00) begin
+                is_working <= 0;
+                ready_out <= !is_write;
+            end 
+            else begin
+                is_working <= 1;
+                ready_out <= 0;
+            end
+        end 
     end
 end
 

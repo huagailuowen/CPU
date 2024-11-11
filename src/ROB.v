@@ -40,7 +40,7 @@ module ROB (
     input wire [ROB_SIZE_BIT-1:0] rs_rob_id, // the ROB id of the instruction
 
     // interaction with LSB
-    output reg write_back,     // write back signal
+    // output reg write_back,     // write back signal
 
     input wire lsb_fi, // the output signal of LSB
     input wire [31:0] lsb_value, // the output value of LSB

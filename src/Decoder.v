@@ -58,15 +58,15 @@ module Decoder (
     output wire                     rs_r2_has_dep,
     output wire [ROB_SIZE_BIT-1:0]  rs_r1_dep,
     output wire [ROB_SIZE_BIT-1:0]  rs_r2_dep,
-    // output wire [31:0]              rs_imm,
     output wire [ROB_SIZE_BIT-1:0]  rs_rob_id,
+    // output wire [31:0]              rs_imm,
     // output wire [4:0]               rs_rd_id,
 
 
     // interaction with LSB
     input wire                      lsb_full,		// LSB full signal
     output reg                      lsb_input,      // the input signal of LSB
-    output reg [`LSB_TYPE_BIT-1:0] lsb_type,       // the type of the instruction
+    output reg [`LSB_TYPE_BIT-1:0]  lsb_type,       // the type of the instruction
     output wire [31:0]              lsb_r1_val,      
     output wire [31:0]              lsb_r2_val,
     output wire                     lsb_r1_has_dep,
@@ -297,3 +297,4 @@ begin
         end
     end
 end
+endmodule

@@ -47,8 +47,9 @@ module LSB(
     assign data_addr = r1_val[head] + imm[head];
     assign data_in = r2_val[head];
     assign work_type = type[head][2:0];
-    assign need_data = lsb_size > 0 && ready[head] && (is_write && rob_head_id == rob_id[head] || !is_write && state[head] == Nready);
+    assign need_data = lsb_size > 0 && ready[head] && !(need_confirm && rob_head_id != rob_id[head]) && state[head] == Nready;
 
+    wire need_confirm = is_write || data_addr[17:16] == 2'b11;
 
     localparam LSB_SIZE_MAX = 6'b001000;
     localparam Nready = 2'b00;
