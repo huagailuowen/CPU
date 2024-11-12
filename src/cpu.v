@@ -32,7 +32,7 @@ module cpu(
     wire [`ROB_SIZE_BIT-1:0]rob_free_id;
     wire [`ROB_SIZE_BIT-1:0] rob_head_id;
     wire rob_clear;
-    wire rob_rst_addr;
+    wire [31:0] rob_rst_addr;
     wire rob_qry1_ready;
     wire [31:0] rob_qry1_value;
     wire rob_qry2_ready;
@@ -66,13 +66,13 @@ module cpu(
         .rob_qry1_value(rob_qry1_value),
         .rob_qry2_id(decoder_rob_qry2_id),
         .rob_qry2_ready(rob_qry2_ready),
-        .rob_qry2_value(rob_qry2_value),
+        .rob_qry2_value(rob_qry2_value)
     );
 
     // RF
 
-    wire rf_qry_r1_val;
-    wire rf_qry_r2_val;
+    wire [31:0] rf_qry_r1_val;
+    wire [31:0] rf_qry_r2_val;
     wire [`ROB_SIZE_BIT-1:0] rf_qry_r1_dep;
     wire [`ROB_SIZE_BIT-1:0] rf_qry_r2_dep;
     wire rf_qry_r1_has_dep;
@@ -100,7 +100,7 @@ module cpu(
         .qry_r1_dep(rf_qry_r1_dep),
         .qry_r2_dep(rf_qry_r2_dep),
         .qry_r1_has_dep(rf_qry_r1_has_dep),
-        .qry_r2_has_dep(rf_qry_r2_has_dep),
+        .qry_r2_has_dep(rf_qry_r2_has_dep)
     );
 
     // RS
@@ -118,6 +118,8 @@ module cpu(
         .rdy_in(rdy_in),
 
         .rs_full(rs_full),
+        .rob_clear(rob_clear),
+
         .inst_input(decoder_rs_input),
         .rs_type(decoder_rs_type),
         .rs_r1_val(decoder_rs_r1_val),
@@ -126,21 +128,21 @@ module cpu(
         .rs_r2_has_dep(decoder_rs_r2_has_dep),
         .rs_r1_dep(decoder_rs_r1_dep),
         .rs_r2_dep(decoder_rs_r2_dep),
-        .rs_rob_id(decoder_rs_rob_id),
+        .rs_rob_id_in(decoder_rs_rob_id),
 
         .rs_fi(alu_fi),
         .rs_value(alu_res),
         .rs_rob_id(alu_cur_rob_id),
         .lsb_fi(lsb_fi),
         .lsb_value(lsb_value),
-        .lsb_rob_id(lsb_rob_id),
+        .lsb_rob_id(lsb_rob_id)
     );
 
     // ALU
 
     wire alu_fi;
-    wire alu_cur_rob_id;
-    wire alu_res;
+    wire [`ROB_SIZE_BIT-1:0] alu_cur_rob_id;
+    wire [31:0] alu_res;
     ALU alu(
         .clk_in(clk_in),
         .rst_in(rst_in),
@@ -154,14 +156,14 @@ module cpu(
 
         .alu_fi(alu_fi),
         .cur_rob_id(alu_cur_rob_id),
-        .res(alu_res),
+        .res(alu_res)
     );
 
     // LSB
      
     wire lsb_full;
     wire lsb_fi;
-    wire lsb_value;
+    wire [31:0] lsb_value;
     wire [`ROB_SIZE_BIT-1:0] lsb_rob_id;
     wire lsb_need_data;
     wire lsb_is_write;
@@ -187,7 +189,7 @@ module cpu(
         .lsb_r1_dep(decoder_lsb_r1_dep),
         .lsb_r2_dep(decoder_lsb_r2_dep),
         .lsb_imm(decoder_lsb_imm),
-        .lsb_rob_id(decoder_lsb_rob_id),
+        .lsb_rob_id_in(decoder_lsb_rob_id),
 
         .lsb_fi(lsb_fi),
         .lsb_value(lsb_value),
@@ -203,7 +205,7 @@ module cpu(
         .work_type(lsb_work_type),
         .data_handle(cache_data_handle),
         .data_ready(cache_data_ready),
-        .data_out(cache_data_out),
+        .data_out(cache_data_out)
     );
 
     // Fetcher
@@ -228,11 +230,11 @@ module cpu(
         .inst_req(fetcher_inst_req),
         .inst_addr(fetcher_inst_addr),
         .inst_handle(cache_inst_handle),
-        .inst_ready(cache_inst_ready),
-        .inst_out(cache_inst_out),
+        .inst_ready_in(cache_inst_ready),
+        .inst_in(cache_inst_out),
 
         .rob_clear(rob_clear),
-        .rob_rst_addr(rob_rst_addr),
+        .rob_rst_addr(rob_rst_addr)
     );
 
     // Decoder
@@ -243,33 +245,32 @@ module cpu(
     wire [4:0] decoder_rs2_id;
     wire [4:0] decoder_rob_qry1_id;
     wire [4:0] decoder_rob_qry2_id;
-    wire [4:0] decoder_rob_input;
-    wire                     decoder_rob_input,
-    wire                     decoder_rob_fi,   
-    wire [31:0]              decoder_rob_value,
-    wire [31:0]              decoder_rob_addr, 
-    wire [ROB_TYPE_BIT-1:0]  decoder_rob_type, 
-    wire [4:0]               decoder_rob_reg_id,
-    wire                     decoder_rs_input,     
-    wire [`RS_TYPE_BIT-1:0]  decoder_rs_type,       
-    wire [31:0]              decoder_rs_r1_val,    
-    wire [31:0]              decoder_rs_r2_val,
-    wire                     decoder_rs_r1_has_dep,
-    wire                     decoder_rs_r2_has_dep,
-    wire [ROB_SIZE_BIT-1:0]  decoder_rs_r1_dep,
-    wire [ROB_SIZE_BIT-1:0]  decoder_rs_r2_dep,
-    wire [ROB_SIZE_BIT-1:0]  decoder_rs_rob_id,
+    wire                     decoder_rob_input;
+    wire                     decoder_rob_fi;   
+    wire [31:0]              decoder_rob_value;
+    wire [31:0]              decoder_rob_addr; 
+    wire [`ROB_TYPE_BIT-1:0]  decoder_rob_type; 
+    wire [4:0]               decoder_rob_reg_id;
+    wire                     decoder_rs_input;     
+    wire [`RS_TYPE_BIT-1:0]  decoder_rs_type;       
+    wire [31:0]              decoder_rs_r1_val;    
+    wire [31:0]              decoder_rs_r2_val;
+    wire                     decoder_rs_r1_has_dep;
+    wire                     decoder_rs_r2_has_dep;
+    wire [`ROB_SIZE_BIT-1:0]  decoder_rs_r1_dep;
+    wire [`ROB_SIZE_BIT-1:0]  decoder_rs_r2_dep;
+    wire [`ROB_SIZE_BIT-1:0]  decoder_rs_rob_id;
 
-    wire                     decoder_lsb_input,     
-    wire [`LSB_TYPE_BIT-1:0] decoder_lsb_type,       
-    wire [31:0]              decoder_lsb_r1_val,    
-    wire [31:0]              decoder_lsb_r2_val,
-    wire                     decoder_lsb_r1_has_dep,
-    wire                     decoder_lsb_r2_has_dep,
-    wire [ROB_SIZE_BIT-1:0]  decoder_lsb_r1_dep,
-    wire [ROB_SIZE_BIT-1:0]  decoder_lsb_r2_dep,
-    wire [31:0]              decoder_lsb_imm,
-    wire [ROB_SIZE_BIT-1:0]  decoder_lsb_rob_id,
+    wire                     decoder_lsb_input;     
+    wire [`LSB_TYPE_BIT-1:0] decoder_lsb_type;       
+    wire [31:0]              decoder_lsb_r1_val;    
+    wire [31:0]              decoder_lsb_r2_val;
+    wire                     decoder_lsb_r1_has_dep;
+    wire                     decoder_lsb_r2_has_dep;
+    wire [`ROB_SIZE_BIT-1:0]  decoder_lsb_r1_dep;
+    wire [`ROB_SIZE_BIT-1:0]  decoder_lsb_r2_dep;
+    wire [31:0]              decoder_lsb_imm;
+    wire [`ROB_SIZE_BIT-1:0]  decoder_lsb_rob_id;
 
     Decoder decoder(
         .clk_in(clk_in),
@@ -330,12 +331,12 @@ module cpu(
         .lsb_r1_dep(decoder_lsb_r1_dep),
         .lsb_r2_dep(decoder_lsb_r2_dep),
         .lsb_imm(decoder_lsb_imm),
-        .lsb_rob_id(decoder_lsb_rob_id),
+        .lsb_rob_id(decoder_lsb_rob_id)
     );
     // Cache
 
     wire cache_mem_dout;
-    wire cache_mem_a;
+    wire [31:0] cache_mem_a;
     wire cache_mem_wr;
     wire cache_inst_handle;
     wire cache_inst_ready;
@@ -350,9 +351,9 @@ module cpu(
         .rdy_in(rdy_in),
 
         .mem_din(mem_din),
-        .mem_dout(cache_mem_dout),
-        .mem_a(cache_mem_a),
-        .mem_wr(cache_mem_wr),
+        .mem_dout(mem_dout),
+        .mem_a(mem_a),
+        .mem_wr(mem_wr),
         .io_buffer_full(io_buffer_full),
 
         .rob_clear(rob_clear),
@@ -369,7 +370,7 @@ module cpu(
         .work_type(lsb_work_type),
         .data_handle(cache_data_handle),
         .data_ready(cache_data_ready),
-        .data_out(cache_data_out),
+        .data_out(cache_data_out)
     );
 
 always @(posedge clk_in)

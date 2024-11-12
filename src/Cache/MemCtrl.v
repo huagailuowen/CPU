@@ -14,7 +14,7 @@ module MemCtrl(
     input wire [31:0] addr, // the address
     input wire [31:0] data_in, // the data, if write
     output wire [31:0] data_out, // the data
-    input wire [2:0] work_type;
+    input wire [2:0] work_type,
 
     output wire real_ready_out, // if the data is ready
     output reg is_working, // if has current work
@@ -28,7 +28,7 @@ module MemCtrl(
     output wire [ 7:0]          mem_dout,		// data output bus
     output wire [31:0]          mem_a,			// address bus (only 17:0 is used)
     output wire                 mem_wr,			// write/read signal (1 for write)
-	input  wire                 io_buffer_full, // 1 if uart buffer is full
+	input  wire                 io_buffer_full // 1 if uart buffer is full
     // output wire mem_valid, // if need to work
     // output wire mem_is_write, // if write
     // output wire [31:0] mem_addr, // the address
@@ -38,11 +38,18 @@ module MemCtrl(
 );
     assign mem_a = new_task ? addr : cur_addr + {cur_state, 3'b0};
     assign mem_wr = new_task ? is_write : cur_is_write;
-    wire [4:0] start_pos = cur_state << 3;
-    wire [4:0] end_pos = start_pos + 7;   
-    assign mem_dout = new_task ? data_in[7:0] : cur_data_in[end_pos:start_pos];
+    // wire [4:0] start_pos = cur_state << 3;
+    // wire [4:0] end_pos = start_pos + 7;
+    wire [7:0] switch_data = (cur_state == 2'b00) ? cur_data_in[7:0] :
+        (cur_state == 2'b01) ? cur_data_in[15:8] :
+        (cur_state == 2'b10) ? cur_data_in[23:16] :
+        cur_data_in[31:24];
 
-    reg ready_out, // if the data is ready
+    // assign mem_dout = new_task ? data_in[7:0] : cur_data_in[end_pos:start_pos];
+    assign mem_dout = new_task ? data_in[7:0] : switch_data;
+
+
+    reg ready_out; // if the data is ready
     assign real_ready_out = (rob_clear && !cur_is_write) ? 0 : ready_out;
     reg cur_is_write;
     reg [31:0] cur_addr;
@@ -52,11 +59,11 @@ module MemCtrl(
     reg [1:0]cur_state;
     // the read offset
 
-    wire data_out_b = {{24{mem_dout[7]}}, mem_dout[7:0]};
-    wire data_out_bu = {{24'b0}, mem_out[7:0]};
-    wire data_out_h = {{16{mem_dout[7]}}, mem_dout[7:0], cur_data_out[7:0]};
-    wire data_out_hu = {{16'b0}, mem_out[7:0], cur_data_out[7:0]};
-    wire data_out_w = {{mem_dout[7:0], cur_data_out[23:0]}};   
+    wire data_out_b = {{24{mem_din[7]}}, mem_din[7:0]};
+    wire data_out_bu = {{24'b0}, mem_din[7:0]};
+    wire data_out_h = {{16{mem_din[7]}}, mem_din[7:0], cur_data_out[7:0]};
+    wire data_out_hu = {{16'b0}, mem_din[7:0], cur_data_out[7:0]};
+    wire data_out_w = {{mem_din[7:0], cur_data_out[23:0]}};   
 
     assign data_out = (!cur_work_type[2]) ? 
         ((cur_work_type[1:0] == 2'b00) ? data_out_b :
@@ -65,7 +72,6 @@ module MemCtrl(
         ((cur_work_type[1:0] == 2'b00) ? data_out_bu :
         (cur_work_type[1:0] == 2'b01) ? data_out_hu :
         0);
-    
 
 always @(posedge clk_in)
 begin
@@ -93,9 +99,16 @@ else if (rdy_in)
                 is_working <= 0;
                 ready_out <= !cur_is_write;
             end
-            cur_data_out[end_pos:start_pos] <= mem_dout;
+            case (cur_state) 
+                2'b00: cur_data_out[7:0] <= mem_din;
+                2'b01: cur_data_out[15:8] <= mem_din;
+                2'b10: cur_data_out[23:16] <= mem_din;
+                2'b11: cur_data_out[31:24] <= mem_din;
+            endcase
+            cur_state <= cur_state + 1;
+            // cur_data_out[end_pos:start_pos] <= mem_dout;
         end 
-        if(new_task) begin
+        else if(new_task) begin
             cur_is_write <= is_write;
             cur_addr <= addr;
             cur_data_in <= data_in;

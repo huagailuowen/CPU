@@ -21,7 +21,7 @@ module Fetcher(
 
     // with ROB
     input wire rob_clear, // if clear 
-    input wire [31:0] rob_rst_addr, // the address of the instruction, for restarting ROB
+    input wire [31:0] rob_rst_addr // the address of the instruction, for restarting ROB
 
 );
     reg [31:0] PC;

@@ -1,60 +1,88 @@
-PWD := $(CURDIR)
+prefix = $(shell pwd)
+# Folder Path
+src = $(prefix)/src
+testspace = $(prefix)/testspace
+testcase = $(prefix)/testcase
 
-SRC_DIR := $(PWD)/src
-TESTSPACE_DIR := $(PWD)/testspace
-TESTCASE_DIR := $(PWD)/testcase
+sim_testcase = $(testcase)/sim
+fpga_testcase = $(testcase)/fpga
 
-SIM_TESTCASE_DIR := $(TESTCASE_DIR)/sim
-FPGA_TESTCASE_DIR := $(TESTCASE_DIR)/fpga
+sim = $(prefix)/sim
+riscv_toolchain = /opt/riscv
+riscv_bin = $(riscv_toolchain)/bin
+sys = $(prefix)/sys
 
-SIM_DIR := $(PWD)/sim
+sources = $(shell find "$(src)" -name '*.v')
 
-V_SOURCES := $(shell find $(SRC_DIR) -name '*.v')
+testcases=$(shell find $(testcase) -name "*.c")
+datafiles=$(testcases:.c=.data)
+dumpfiles=$(testcases:.c=.dump)
 
-all: testcases build_sim
-
-testcases:
-	@make -C $(TESTCASE_DIR)
+all: $(datafiles) $(dumpfiles)
 
 _no_testcase_name_check:
-ifndef name
-	$(error name is not set. Usage: make run_sim name=your_testcase_name)
-endif
+	@$(if $(strip $(name)),, echo 'Missing Testcase Name')
+	@$(if $(strip $(name)),, exit 1)
 
-build_sim: $(SIM_DIR)/testbench.v $(V_SOURCES)
-	@iverilog -o $(TESTSPACE_DIR)/test $(SIM_DIR)/testbench.v $(V_SOURCES)
+# All build result are put at testspace
+build_sim:
+	@cd $(src) && iverilog -o $(testspace)/test $(sim)/testbench.v  ${sources}
 
-build_sim_test: no_testcase_name_check
-	@cp $(SIM_TESTCASE_DIR)/*$(name)*.c $(TESTSPACE_DIR)/test.c
-	@cp $(SIM_TESTCASE_DIR)/*$(name)*.data $(TESTSPACE_DIR)/test.data
-	@cp $(SIM_TESTCASE_DIR)/*$(name)*.dump $(TESTSPACE_DIR)/test.dump
-	@cp $(SIM_TESTCASE_DIR)/*$(name)*.ans $(TESTSPACE_DIR)/test.ans
-
-
-build_fpga_test: testcases _no_testcase_name_check
-	@cp $(FPGA_TESTCASE_DIR)/*$(name)*.c $(TESTSPACE_DIR)/test.c
-	@cp $(FPGA_TESTCASE_DIR)/*$(name)*.data $(TESTSPACE_DIR)/test.data
-	@cp $(FPGA_TESTCASE_DIR)/*$(name)*.dump $(TESTSPACE_DIR)/test.dump
-# sometimes the input and output file not exist
-	@rm -f $(TESTSPACE_DIR)/test.in $(TESTSPACE_DIR)/test.ans
-	@find $(FPGA_TESTCASE_DIR) -name '*$(name)*.in' -exec cp {} $(TESTSPACE_DIR)/test.in \;
-	@find $(FPGA_TESTCASE_DIR) -name '*$(name)*.ans' -exec cp {} $(TESTSPACE_DIR)/test.ans \;
-
-run_sim: build_sim build_sim_test
-	cd $(TESTSPACE_DIR) && ./test
-# add your own test script here
-# Example:
-#	diff ./test/test.ans ./test/test.out
+build_sim_test: _no_testcase_name_check all
+	@cp $(sim_testcase)/*$(name)*.c $(testspace)/test.c
+	@cp $(sim_testcase)/*$(name)*.data $(testspace)/test.data
+	@cp $(sim_testcase)/*$(name)*.dump $(testspace)/test.dump
 
 
-fpga_device := /dev/ttyUSB1
-fpga_run_mode := -I # or -T
+build_sim_test_vector: _no_testcase_name_check
+	@$(riscv_bin)/riscv64-unknown-elf-as -o $(sys)/rom.o -march=rv64i $(sys)/rom.s
+	@cp $(sim_testcase)/*$(name)*.c $(testspace)/test.c
+	@$(riscv_bin)/riscv64-unknown-elf-gcc -o $(testspace)/test.o -I $(sys) -c $(testspace)/test.c -g -march=rv64gv -static -mabi=lp64 -O3
+	@$(riscv_bin)/riscv64-unknown-elf-ld -T $(sys)/memory.ld $(sys)/rom.o $(testspace)/test.o -L $(riscv_toolchain)/riscv64-unknown-elf/lib/ -L $(riscv_toolchain)/lib/gcc/riscv64-unknown-elf/13.2.0/ -lc -lgcc -lm -lnosys -o $(testspace)/test.om
+	@$(riscv_bin)/riscv64-unknown-elf-objcopy -O verilog $(testspace)/test.om $(testspace)/test.data
+	@$(riscv_bin)/riscv64-unknown-elf-objdump -d $(testspace)/test.om > $(testspace)/test.dump
 
-# Please manually load .bit file to FPGA
-run_fpga: build_fpga_test
-	cd $(TESTSPACE_DIR) && if [ -f test.in ]; then $(PWD)/fpga/fpga test.data test.in $(fpga_device) $(fpga_run_mode); else $(PWD)/fpga/fpga test.data $(fpga_device) $(fpga_run_mode); fi
+AS=$(riscv_bin)/riscv32-unknown-elf-as
+CC=$(riscv_bin)/riscv32-unknown-elf-gcc
+LD=$(riscv_bin)/riscv32-unknown-elf-ld
+OBJCOPY=$(riscv_bin)/riscv32-unknown-elf-objcopy
+OBJDUMP=$(riscv_bin)/riscv32-unknown-elf-objdump
+
+AS_FLAGS=-march=rv32i
+CFLAGS=-I $(sys) -O2 -march=rv32i -mabi=ilp32 -Wall
+
+%.dump: %.om
+	@$(OBJDUMP) -D $< > $@
+
+%.data: %.om
+	@if [[ $@ =~ "fpga" ]] \
+	then \
+		$(OBJCOPY) -O binary $< $@ ; \
+	else \
+		$(OBJCOPY) -O verilog $< $@ ; \
+	fi
+
+%.om: $(sys)/rom.o %.o
+	@$(LD) -T $(sys)/memory.ld $^ -L $(riscv_toolchain)/riscv32-unknown-elf/lib/ -L $(riscv_toolchain)/lib/gcc/riscv32-unknown-elf/13.2.0/ -lc -lgcc -lm -lnosys -o $@
+
+%.o: %.c
+	@if [[ $@ =~ "fpga" ]] \
+	then \
+		$(CC) -o $@ -c $< $(CFLAGS) ; \
+	else \
+		$(CC) -o $@ -c $< $(CFLAGS) -DSIM ; \
+	fi
+
+$(sys)/rom.o: $(sys)/rom.s
+	@$(AS) -o $@ -c $< $(AS_FLAGS)
+
+run_sim:
+	@make build_sim
+	@cd $(testspace) && ./test
 
 clean:
-	rm -f $(TESTSPACE_DIR)/test*
+	@rm -f $(sys)/rom.o $(testspace)/test* $(datafiles) $(dumpfiles)
 
-.PHONY: all build_sim build_sim_test run_sim clean
+test_sim: build_sim build_sim_test run_sim
+
+.PHONY: _no_testcase_name_check build_sim build_sim_test run_sim clear test_sim all

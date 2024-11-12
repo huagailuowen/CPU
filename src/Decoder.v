@@ -5,7 +5,7 @@ module Decoder (
     input wire  rst_in,			// reset signal
 	input wire  rdy_in,			// ready signal, pause cpu when low
 
-    input wire [31:0] inst_input,	// instruction input
+    input wire inst_input,	// instruction input
     input wire [31:0] inst,	    // instruction input
     input wire [31:0] inst_addr,// instruction address input
     output wire is_stall,		// stall signal
@@ -20,17 +20,17 @@ module Decoder (
     input wire [31:0]               rs2_val,
     input wire                      rs1_has_dep,
     input wire                      rs2_has_dep,
-    input wire [ROB_SIZE_BIT-1:0]   rs1_dep,
-    input wire [ROB_SIZE_BIT-1:0]   rs2_dep,
+    input wire [`ROB_SIZE_BIT-1:0]   rs1_dep,
+    input wire [`ROB_SIZE_BIT-1:0]   rs2_dep,
     output wire [4:0]               rs1_id,
     output wire [4:0]               rs2_id,
 
     // interaction with ROB
     //FROM
-    output wire [ROB_SIZE_BIT-1:0] rob_qry1_id,
+    output wire [`ROB_SIZE_BIT-1:0] rob_qry1_id,
     input wire                      rob_qry1_fi,
     input wire [31:0]              rob_qry1_value,
-    output wire [ROB_SIZE_BIT-1:0]  rob_qry2_id,
+    output wire [`ROB_SIZE_BIT-1:0]  rob_qry2_id,
     input wire                      rob_qry2_fi,
     input wire [31:0]              rob_qry2_value, 
     //the ROB should return the result updated by cd_bus' data of the cur cycle 
@@ -38,12 +38,12 @@ module Decoder (
     //TO
     input wire                      rob_full,		// ROB full signal
     input wire                      rob_clear,		// clear the ROB
-    input wire                      rob_vacant_id,			// the ROB id of the instruction
+    input wire [`ROB_SIZE_BIT-1:0]  rob_vacant_id,  // the ROB id of the instruction
     output reg                     rob_input,      // the input signal of ROB
     output reg                     rob_fi,         // is the instruction has finished, like lui
     output reg [31:0]              rob_value,      // in case that the ins is a lui etc.
     output reg [31:0]              rob_addr,       // the address of the instruction, for restarting ROB
-    output reg [ROB_TYPE_BIT-1:0]  rob_type,       // the type of the instruction
+    output reg [`ROB_TYPE_BIT-1:0]  rob_type,       // the type of the instruction
     output reg [4:0]               rob_reg_id,     // the reg id of the instruction
 
 
@@ -56,9 +56,9 @@ module Decoder (
     output wire [31:0]              rs_r2_val,
     output wire                     rs_r1_has_dep,
     output wire                     rs_r2_has_dep,
-    output wire [ROB_SIZE_BIT-1:0]  rs_r1_dep,
-    output wire [ROB_SIZE_BIT-1:0]  rs_r2_dep,
-    output wire [ROB_SIZE_BIT-1:0]  rs_rob_id,
+    output wire [`ROB_SIZE_BIT-1:0]  rs_r1_dep,
+    output wire [`ROB_SIZE_BIT-1:0]  rs_r2_dep,
+    output wire [`ROB_SIZE_BIT-1:0]  rs_rob_id,
     // output wire [31:0]              rs_imm,
     // output wire [4:0]               rs_rd_id,
 
@@ -71,10 +71,10 @@ module Decoder (
     output wire [31:0]              lsb_r2_val,
     output wire                     lsb_r1_has_dep,
     output wire                     lsb_r2_has_dep,
-    output wire [ROB_SIZE_BIT-1:0]  lsb_r1_dep,
-    output wire [ROB_SIZE_BIT-1:0]  lsb_r2_dep,
+    output wire [`ROB_SIZE_BIT-1:0]  lsb_r1_dep,
+    output wire [`ROB_SIZE_BIT-1:0]  lsb_r2_dep,
     output wire [31:0]              lsb_imm,
-    output wire [ROB_SIZE_BIT-1:0]  lsb_rob_id,
+    output wire [`ROB_SIZE_BIT-1:0]  lsb_rob_id
     // output wire [4:0]               lsb_rd_id
 
 
@@ -91,8 +91,8 @@ module Decoder (
     reg [31:0] r2_val;
     reg r1_has_dep;
     reg r2_has_dep;
-    reg [ROB_SIZE_BIT-1:0] r1_dep;  
-    reg [ROB_SIZE_BIT-1:0] r2_dep;
+    reg [`ROB_SIZE_BIT-1:0] r1_dep;  
+    reg [`ROB_SIZE_BIT-1:0] r2_dep;
     reg [31:0] imm;
     reg [`ROB_SIZE_BIT-1:0] rob_id;
 
@@ -114,7 +114,7 @@ module Decoder (
     assign lsb_imm = imm;
 
     wire [6:0] opcode = inst[6:0];
-    wire [4:0] rd = opcode != BR ? inst[11:7] : {4{1'b0} , br_pred};
+    wire [4:0] rd = opcode != BR ? inst[11:7] : {{4{1'b0}} , br_pred};
     wire [4:0] rs1 = inst[19:15];
     wire [4:0] rs2 = inst[24:20];
     wire [2:0] func3 = inst[14:12];
@@ -236,7 +236,7 @@ begin
             rs_input <= need_rs;
             rs_type[4] <= opcode == BR;
             rs_type[3:1] <= func3;
-            rs_type[0] <= (opcode == BR || (opcode == ARITHI && !is_arithi_star)) 0 : func7[5];
+            rs_type[0] <= (opcode == BR || (opcode == ARITHI && !is_arithi_star)) ? 0 : func7[5];
             // U&J won't be in RS
             lsb_input <= need_lsb;
             lsb_type[3] <= opcode == STORE;
@@ -255,9 +255,9 @@ begin
                 ARITHI: begin
                     rob_type <= `ROB_REGI;
                     // imm <= id{20'b0 , immI};
-                    imm <= is_arithi_star ? {27{immI_star[4]}, immI_star} : {20{immI[11]}, immI};
+                    imm <= is_arithi_star ? {{27{immI_star[4]}}, immI_star} : {{20{immI[11]}}, immI};
                     //arithmetic immediate
-                    rs2_val <= {{20{immI[11]}}, immI}
+                    r2_val <= {{20{immI[11]}}, immI};
                 end
                 BR: begin
                     rob_type <= `ROB_BR;
@@ -285,12 +285,12 @@ begin
                 end
                 LOAD: begin
                     rob_type <= `ROB_REG;
-                    imm <= {20{immI[11]} , immI};
+                    imm <= {{20{immI[11]}}, immI};
                     //load
                 end
                 STORE: begin
                     rob_type <= `ROB_ST;
-                    imm <= {20{immS[11]} , immS};
+                    imm <= {{20{immS[11]}} , immS};
                     //store
                 end
             endcase

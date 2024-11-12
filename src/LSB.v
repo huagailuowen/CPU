@@ -6,7 +6,7 @@ module LSB(
     input wire rdy_in,  // ready signal, pause cpu when low
 
     input wire rob_clear,  // clear the ROB signal
-    input wire rob_head_id,  // the ROB id of the head instruction
+    input wire [`ROB_SIZE_BIT-1:0] rob_head_id,  // the ROB id of the head instruction
     output wire lsb_full,  // lsb full signal
 
     // interaction with Decoder
@@ -18,20 +18,20 @@ module LSB(
     input wire [31:0] lsb_r2_val,  // the value of lsb2
     input wire lsb_r1_has_dep,  // does lsb1 has dependency
     input wire lsb_r2_has_dep,  // does lsb2 has dependency
-    input wire [ROB_SIZE_BIT-1:0] lsb_r1_dep,  // the ROB id of the dependency
-    input wire [ROB_SIZE_BIT-1:0] lsb_r2_dep,  // the ROB id of the dependency
+    input wire [`ROB_SIZE_BIT-1:0] lsb_r1_dep,  // the ROB id of the dependency
+    input wire [`ROB_SIZE_BIT-1:0] lsb_r2_dep,  // the ROB id of the dependency
     input wire [31:0] lsb_imm,  // the immediate value of the instruction
-    input wire [ROB_SIZE_BIT-1:0] lsb_rob_id, // the ROB id of the instruction
+    input wire [`ROB_SIZE_BIT-1:0] lsb_rob_id_in, // the ROB id of the instruction
     // input wire [4:0] lsb_rd_id,  // the rd id of the instruction
 
 
     // output to the cd_bus
     output wire lsb_fi,
-    output wire lsb_value,
-    output wire [ROB_SIZE_BIT-1:0] lsb_rob_id,
+    output wire [31:0] lsb_value,
+    output wire [`ROB_SIZE_BIT-1:0] lsb_rob_id,
     input wire rs_fi,
-    input wire rs_value,
-    input wire [ROB_SIZE_BIT-1:0] rs_rob_id,
+    input wire [31:0] rs_value,
+    input wire [`ROB_SIZE_BIT-1:0] rs_rob_id,
 
     // interaction with Cache
     output wire need_data, // if need data
@@ -41,13 +41,13 @@ module LSB(
     output wire [2:0] work_type,
     input wire data_handle, // if the data_work is handled
     input wire data_ready, // if the data is ready
-    input wire [31:0] data_out, // the data
+    input wire [31:0] data_out // the data
 );
     assign is_write = type[head][3];
     assign data_addr = r1_val[head] + imm[head];
     assign data_in = r2_val[head];
     assign work_type = type[head][2:0];
-    assign need_data = lsb_size > 0 && ready[head] && !(need_confirm && rob_head_id != rob_id[head]) && state[head] == Nready;
+    assign need_data = !rob_clear && lsb_size > 0 && ready[head] && !(need_confirm && rob_head_id != rob_id[head]) && state[head] == Nready;
 
     wire need_confirm = is_write || data_addr[17:16] == 2'b11;
 
@@ -83,7 +83,8 @@ module LSB(
     reg [`ROB_SIZE_BIT-1:0] r2_dep[0:`LSB_SIZE-1];
     reg [`ROB_SIZE_BIT-1:0] rob_id[0:`LSB_SIZE-1];
     reg [`LSB_TYPE_BIT-1:0] type[0:`LSB_SIZE-1];
-    reg [31:0] imm[0:`RS_SIZE-1];
+    reg [31:0] imm[0:`LSB_SIZE-1];
+    reg finished[0:`LSB_SIZE-1];
     reg [`LSB_SIZE_BIT-1:0] head, tail;
 
 
@@ -94,10 +95,10 @@ module LSB(
     wire tmp_lsb_r2_has_dep = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? 0 : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? 0 : lsb_r2_has_dep);
     wire tmp_lsb_r2_val = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? rs_value : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? lsb_value : lsb_r2_val);    
 
-    genvar i;
+    genvar gi;
     generate
-        for(i = 0; i < `RS_SIZE; i = i + 1) begin
-            assign ready[i] = !r1_has_dep[i] && !r2_has_dep[i];
+        for(gi = 0; gi < `RS_SIZE; gi = gi + 1) begin
+            assign ready[gi] = !r1_has_dep[gi] && !r2_has_dep[gi];
         end 
     endgenerate
 
@@ -116,6 +117,7 @@ begin
             r2_dep[i] <= 5'b0;
             type[i] <= 4'b0;
             imm[i] <= 32'b0;
+            rob_id[i] <= 5'b0;
         end
         head <= 0;
         tail <= 0;
@@ -148,6 +150,7 @@ begin
                 r2_dep[tail] <= lsb_r2_dep;
                 type[tail] <= lsb_type;
                 imm[tail] <= lsb_imm;
+                rob_id[tail] <= lsb_rob_id_in;
                 tail <= tail + 1;
             end
             for(i = 0; i < `LSB_SIZE; i = i + 1) begin

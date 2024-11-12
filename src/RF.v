@@ -7,25 +7,25 @@ module RF(
     // interaction with ROB
     input wire rob_clear, // clear the ROB
     input wire is_update_val_in,
-    input wire [4:0]update_val_id;
-    input wire [`ROB_SIZE_BIT-1:0] update_val_dep;
-    input wire [31:0] update_val
+    input wire [4:0]update_val_id,
+    input wire [`ROB_SIZE_BIT-1:0] update_val_dep,
+    input wire [31:0] update_val,
 
     input wire is_update_dep_in,
-    input wire [4:0]update_dep_id;
-    input wire [`ROB_SIZE_BIT-1:0] update_dep;
+    input wire [4:0]update_dep_id,
+    input wire [`ROB_SIZE_BIT-1:0] update_dep,
 
     // interaction with Decoder
-    // input wire is_qry_r1;
-    // input wire is_qry_r2;
-    input wire [4:0] qry_r1_id;
-    input wire [4:0] qry_r2_id;
-    output wire [31:0] qry_r1_val;
-    output wire [31:0] qry_r2_val;
-    output wire [`ROB_SIZE_BIT-1:0] qry_r1_dep;
-    output wire [`ROB_SIZE_BIT-1:0] qry_r2_dep;
-    output wire qry_r1_has_dep;
-    output wire qry_r2_has_dep;
+    // input wire is_qry_r1,
+    // input wire is_qry_r2,
+    input wire [4:0] qry_r1_id,
+    input wire [4:0] qry_r2_id,
+    output wire [31:0] qry_r1_val,
+    output wire [31:0] qry_r2_val,
+    output wire [`ROB_SIZE_BIT-1:0] qry_r1_dep,
+    output wire [`ROB_SIZE_BIT-1:0] qry_r2_dep,
+    output wire qry_r1_has_dep,
+    output wire qry_r2_has_dep
 
 );
     wire is_update_val = update_val_id == 0 ? 0 : is_update_val_in;
@@ -47,19 +47,19 @@ module RF(
 always @(posedge clk_in or posedge rst_in) 
 begin
     if (rst_in) begin
-        for(i = 0; i < `ROB_SIZE; i = i + 1){
+        for(i = 0; i < `ROB_SIZE; i = i + 1) begin
             reg_val[i] <= 0;
             reg_dep[i] <= 0;
             has_dep[i] <= 0;
-        }
+        end
     end
     else if (rdy_in) 
     begin
         if(rob_clear) begin
-            for(i = 0; i < `ROB_SIZE; i = i + 1){
+            for(i = 0; i < `ROB_SIZE; i = i + 1) begin
                 reg_dep[i] <= 0;
                 has_dep[i] <= 0;
-            }
+            end
         end
         else begin
             if(is_update_val) begin

@@ -31,28 +31,27 @@ module Cache(
     // second 2 bit : 00: byte, 01: half word, 10: word
     output wire data_handle, // if the data_work is handled
     output wire data_ready, // if the data is ready
-    output wire [31:0] data_out, // the data
+    output wire [31:0] data_out // the data
     
     //the data is with priority ?
     // the handle must calculate in this cycle
 );
     wire i_hit;
-    wire i_data;
+    wire [31:0] i_data;
     InstCache inst_cache(
         .clk_in(clk_in),
         .rst_in(rst_in),
         .rdy_in(rdy_in),
         
         .addr(inst_addr),
-        .mem_dout(mem_dout),
-        .i_hit(is_hit),
+        .is_hit(i_hit),
         .data_out(i_data),
 
         .is_update(mc_ready_out && !is_data),
         .data_in(inst_out),
-        .addr_in(cur_addr),
+        .addr_in(cur_addr)
     );
-    wire mc_out;
+    wire [31:0] mc_out;
     wire mc_is_working;
     wire mc_ready_out;
     
@@ -75,10 +74,10 @@ module Cache(
         .is_write(mc_is_write), 
         .addr(mc_addr), 
         .data_in(data_in), 
-        .data_out(mc_out)
+        .data_out(mc_out),
         .work_type(mc_work_type),
         .real_ready_out(mc_ready_out),
-        .is_working(mc_is_working), 
+        .is_working(mc_is_working)
     );
 
 

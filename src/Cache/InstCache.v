@@ -6,7 +6,7 @@ module InstCache(
 
     input wire [31:0] addr, 
     output wire is_hit,
-    output wire [31:0] data_out.
+    output wire [31:0] data_out,
     
     //update signal
     input wire is_update,
@@ -38,7 +38,7 @@ if (rst_in)
 else if(rdy_in)
     begin
         if(is_update)begin
-            vaild[cache_pos_in] <= 1;
+            valid[cache_pos_in] <= 1;
             tag[cache_pos_in] <= addr[31:CACHE_SIZE_BIT];
             data[cache_pos_in] <= data_in;
         end

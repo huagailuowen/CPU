@@ -12,9 +12,9 @@ module ALU (
 
     output reg                      alu_fi,
     output reg [`ROB_SIZE_BIT-1:0]  cur_rob_id,
-    output reg [31:0]               res
+    output reg [31:0]               res,
 
-    input wire rob_clear, // clear the ROB
+    input wire rob_clear // clear the ROB
 );
 // our alu only need one cycle to finish the calculation
     //[1:is_branch] [3:func3] [1:func7]
@@ -43,12 +43,11 @@ begin
         cur_rob_id <= 0;
         res <= 0;
     end
-    else if (rdy_in) 
-    begin
+    else if (rdy_in) begin
         alu_fi <= alu_input;
-        if(alu_input)
+        if(alu_input) begin
             cur_rob_id <= inst_rob_id;
-        else
+        end else begin
             cur_rob_id <= 0;
         end
         if (arith_type[4])
