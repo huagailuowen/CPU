@@ -10,7 +10,7 @@ module Decoder (
     input wire [31:0] inst_addr,// instruction address input
     output wire is_stall,		// stall signal
     // output wire is_set_pc,		// set pc signal
-    output wire next_PC,
+    output wire [31:0] next_PC,
     // if stall, the insFetcher won't fetch the next instruction, and the instruction will be fetched again in the next cycle
     // else insFetcher will fetch the next instruction by the next_PC
 

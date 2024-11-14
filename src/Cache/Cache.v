@@ -85,7 +85,7 @@ module Cache(
     // reg ready_out;
     reg is_data;
     reg [31:0] cur_addr;
-    wire able_handle = mc_is_working && !rob_clear;
+    wire able_handle = !mc_is_working && !rob_clear;
     wire need_handle = able_handle && (need_inst && !i_hit || need_data);
     // refer to is mc need handle, not contain the hit 
     wire is_handle_data = need_data;

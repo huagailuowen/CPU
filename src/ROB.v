@@ -98,6 +98,7 @@ begin
         head <= 0;
         tail <= 0;
         rob_size <= 0;
+        rob_clear <= 0;
         // write_back <= 0;
         for(i = 0; i < `ROB_SIZE; i = i + 1) begin
             is_finished[i] <= 0;

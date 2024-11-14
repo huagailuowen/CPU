@@ -5,7 +5,7 @@ module Fetcher(
     input wire rdy_in,  // ready signal, pause cpu when low
 
     // with Decoder
-    input wire next_PC, // the next PC, valid when is_stall is low
+    input wire [31:0] next_PC, // the next PC, valid when is_stall is low
     input wire is_stall, // stall signal
 
     output wire inst_ready_out, // if the instruction is ready
@@ -29,13 +29,13 @@ module Fetcher(
     reg ready;
     reg fetching;
     
-    wire tmp_PC = rob_clear ? rob_rst_addr : (is_stall ? PC : next_PC);
+    wire [31:0] tmp_PC = rob_clear ? rob_rst_addr : (is_stall ? PC : next_PC);
     wire tmp_ready = inst_ready_in ? 1 : ((rob_clear || !is_stall) ? 0 : ready);   
     //can cache response in one cycle? maybe it can
     wire tmp_fetching = inst_handle ? 1 : ((rob_clear || !is_stall)? 0 : fetching);
-    wire tmp_inst = inst_handle ? inst_in : inst;
-    assign inst_req = (rob_clear || !is_stall) ? 1 : !fetching;
-    assign inst_addr = tmp_PC;
+    wire [31:0] tmp_inst = inst_ready_in ? inst_in : inst;
+    assign inst_req = (rob_clear) ? 0 : !fetching;
+    assign [31:0] inst_addr = PC;
 
 
 

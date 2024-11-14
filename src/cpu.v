@@ -27,6 +27,11 @@ module cpu(
 // - 0x30004 read: read clocks passed since cpu starts (in dword, 4 bytes)
 // - 0x30004 write: indicates program stop (will output '\0' through uart tx)
 
+
+    //Debugger
+
+    assign dbgreg_dout[31:0] = decoder_next_PC;
+
     // ROB
     wire rob_full;
     wire [`ROB_SIZE_BIT-1:0]rob_free_id;
@@ -240,7 +245,7 @@ module cpu(
     // Decoder
 
     wire decoder_is_stall;
-    wire decoder_next_PC;
+    wire [31:0] decoder_next_PC;
     wire [4:0] decoder_rs1_id;
     wire [4:0] decoder_rs2_id;
     wire [4:0] decoder_rob_qry1_id;
