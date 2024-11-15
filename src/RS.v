@@ -56,37 +56,37 @@ module RS(
     reg [`ROB_SIZE_BIT-1:0] rob_id[0:`RS_SIZE-1];
     reg [`RS_TYPE_BIT-1:0] type[0:`RS_SIZE-1];
 
-    wire is_free[0:`RS_SIZE-1];
-    wire [`RS_SIZE_BIT-1:0] free_id[0:`RS_SIZE-1];
-    wire is_exe[0:`RS_SIZE-1];
-    wire [`RS_SIZE_BIT-1:0] exe_id[0:`RS_SIZE-1];
+    // wire is_free[0:`RS_SIZE-1];
+    // wire [`RS_SIZE_BIT-1:0] free_id[0:`RS_SIZE-1];
+    // wire is_exe[0:`RS_SIZE-1];
+    // wire [`RS_SIZE_BIT-1:0] exe_id[0:`RS_SIZE-1];
     
-    wire merge_free[0:`RS_SIZE-1];
-    wire [`RS_SIZE_BIT-1:0] merge_free_id[0:`RS_SIZE-1];
-    wire merge_exe[0:`RS_SIZE-1];
-    wire [`RS_SIZE_BIT-1:0] merge_exe_id[0:`RS_SIZE-1];
+    wire merge_free[0:(`RS_SIZE<<1)-1];
+    wire [`RS_SIZE_BIT-1:0] merge_free_id[0:(`RS_SIZE<<1)-1];
+    wire merge_exe[0:(`RS_SIZE<<1)-1];
+    wire [`RS_SIZE_BIT-1:0] merge_exe_id[0:(`RS_SIZE<<1)-1];
     //use the design of tree array to find the free id and exe id
 
     wire tmp_rs_r1_has_dep = (rs_fi && rs_r1_has_dep && rs_rob_id == rs_r1_dep) ? 0 : ((lsb_fi && rs_r1_has_dep && lsb_rob_id == rs_r1_dep) ? 0 : rs_r1_has_dep);
-    wire tmp_rs_r1_val = (rs_fi && rs_r1_has_dep && rs_rob_id == rs_r1_dep) ? rs_value : ((lsb_fi && rs_r1_has_dep && lsb_rob_id == rs_r1_dep) ? lsb_value : rs_r1_val);
+    wire [31:0] tmp_rs_r1_val = (rs_fi && rs_r1_has_dep && rs_rob_id == rs_r1_dep) ? rs_value : ((lsb_fi && rs_r1_has_dep && lsb_rob_id == rs_r1_dep) ? lsb_value : rs_r1_val);
     wire tmp_rs_r2_has_dep = (rs_fi && rs_r2_has_dep && rs_rob_id == rs_r2_dep) ? 0 : ((lsb_fi && rs_r2_has_dep && lsb_rob_id == rs_r2_dep) ? 0 : rs_r2_has_dep);
-    wire tmp_rs_r2_val = (rs_fi && rs_r2_has_dep && rs_rob_id == rs_r2_dep) ? rs_value : ((lsb_fi && rs_r2_has_dep && lsb_rob_id == rs_r2_dep) ? lsb_value : rs_r2_val);    
+    wire [31:0] tmp_rs_r2_val = (rs_fi && rs_r2_has_dep && rs_rob_id == rs_r2_dep) ? rs_value : ((lsb_fi && rs_r2_has_dep && lsb_rob_id == rs_r2_dep) ? lsb_value : rs_r2_val);    
 
     genvar gi;
     generate
+        for(gi = `RS_SIZE; gi < `RS_SIZE << 1; gi = gi + 1)
+        begin
+            assign merge_free[gi] = ~busy[gi-`RS_SIZE];
+            assign merge_free_id[gi] = gi-`RS_SIZE;
+            assign merge_exe[gi] = busy[gi-`RS_SIZE] && !r1_has_dep[gi-`RS_SIZE] && !r2_has_dep[gi-`RS_SIZE];
+            assign merge_exe_id[gi] = gi-`RS_SIZE;
+        end
         for(gi = 0; gi < `RS_SIZE; gi = gi + 1)
         begin
-            assign is_free[gi] = ~busy[gi];
-            assign free_id[gi] = gi;
-            assign is_exe[gi] = busy[gi] && !r1_has_dep[gi] && !r2_has_dep[gi];
-            assign exe_id[gi] = gi;
-        end
-        for(gi = 0; gi < `RS_SIZE/2; gi = gi + 1)
-        begin
-            assign merge_free[gi] = is_free[gi<<1] && is_free[gi<<1|1];
-            assign merge_free_id[gi] = is_free[gi<<1] ? free_id[gi<<1] : free_id[gi<<1|1];
-            assign merge_exe[gi] = is_exe[gi<<1] && is_exe[gi<<1|1];
-            assign merge_exe_id[gi] = is_exe[gi<<1] ? exe_id[gi<<1] : exe_id[gi<<1|1];
+            assign merge_free[gi] = merge_free[gi<<1] && merge_free[gi<<1|1];
+            assign merge_free_id[gi] = merge_free[gi<<1] ? merge_free_id[gi<<1] : merge_free_id[gi<<1|1];
+            assign merge_exe[gi] = merge_exe[gi<<1] && merge_exe[gi<<1|1];
+            assign merge_exe_id[gi] = merge_exe[gi<<1] ? merge_exe_id[gi<<1] : merge_exe_id[gi<<1|1];
         end
     endgenerate
     assign alu_input = merge_exe[0];
@@ -107,12 +107,12 @@ begin
             r1_dep[i] <= 0;
             r2_dep[i] <= 0;
             type[i] <= 0;
-            rs_size <= 0;
         end
+        rs_size <= 0;
     end
     else if (rdy_in) 
     begin
-        rs_size <= rs_size + merge_exe[0] - inst_input;
+        rs_size <= rs_size - merge_exe[0] + inst_input;
         if(inst_input) begin
             busy[merge_free_id[0]] <= 1;
             r1_val[merge_free_id[0]] <= tmp_rs_r1_val;

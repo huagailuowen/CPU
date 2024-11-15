@@ -71,7 +71,22 @@ module cpu(
         .rob_qry1_value(rob_qry1_value),
         .rob_qry2_id(decoder_rob_qry2_id),
         .rob_qry2_ready(rob_qry2_ready),
-        .rob_qry2_value(rob_qry2_value)
+        .rob_qry2_value(rob_qry2_value),
+
+        .rs_fi(alu_fi),
+        .rs_value(alu_res),
+        .rs_rob_id(alu_cur_rob_id),
+        .lsb_fi(lsb_fi),
+        .lsb_value(lsb_value),
+        .lsb_rob_id(lsb_rob_id),
+
+        .is_update_val(rob_is_update_val),
+        .update_val_id(rob_update_val_id),
+        .update_val_dep(rob_update_val_dep),
+        .update_val(rob_update_val),
+        .is_update_dep(rob_is_update_dep),
+        .update_dep_id(rob_update_dep_id),
+        .update_dep(rob_update_dep)
     );
 
     // RF
@@ -140,7 +155,13 @@ module cpu(
         .rs_rob_id(alu_cur_rob_id),
         .lsb_fi(lsb_fi),
         .lsb_value(lsb_value),
-        .lsb_rob_id(lsb_rob_id)
+        .lsb_rob_id(lsb_rob_id),
+
+        .alu_input(rs_alu_input),
+        .arith_type(rs_arith_type),
+        .alu_r1_val(rs_r1_val),
+        .alu_r2_val(rs_r2_val),
+        .inst_rob_id(rs_inst_rob_id)
     );
 
     // ALU
@@ -161,7 +182,9 @@ module cpu(
 
         .alu_fi(alu_fi),
         .cur_rob_id(alu_cur_rob_id),
-        .res(alu_res)
+        .res(alu_res),
+
+        .rob_clear(rob_clear)
     );
 
     // LSB

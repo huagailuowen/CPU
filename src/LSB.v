@@ -91,9 +91,9 @@ module LSB(
     assign lsb_full = (lsb_size == LSB_SIZE_MAX) || (lsb_size + 1 == LSB_SIZE_MAX && inst_input && !finished[head]);
 
     wire tmp_lsb_r1_has_dep = (rs_fi && lsb_r1_has_dep && rs_rob_id == lsb_r1_dep) ? 0 : ((lsb_fi && lsb_r1_has_dep && lsb_rob_id == lsb_r1_dep) ? 0 : lsb_r1_has_dep);
-    wire tmp_lsb_r1_val = (rs_fi && lsb_r1_has_dep && rs_rob_id == lsb_r1_dep) ? rs_value : ((lsb_fi && lsb_r1_has_dep && lsb_rob_id == lsb_r1_dep) ? lsb_value : lsb_r1_val);
+    wire [31:0] tmp_lsb_r1_val = (rs_fi && lsb_r1_has_dep && rs_rob_id == lsb_r1_dep) ? rs_value : ((lsb_fi && lsb_r1_has_dep && lsb_rob_id == lsb_r1_dep) ? lsb_value : lsb_r1_val);
     wire tmp_lsb_r2_has_dep = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? 0 : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? 0 : lsb_r2_has_dep);
-    wire tmp_lsb_r2_val = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? rs_value : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? lsb_value : lsb_r2_val);    
+    wire [31:0] tmp_lsb_r2_val = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? rs_value : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? lsb_value : lsb_r2_val);    
 
     genvar gi;
     generate

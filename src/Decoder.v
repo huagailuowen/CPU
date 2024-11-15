@@ -139,11 +139,11 @@ module Decoder (
 
     // interaction with the insFetcher
     wire need_set_PC = opcode == JAL || opcode == JALR || opcode == BR;
-    wire next_PC_JAL = inst_addr + {{11{immJ[20]}}, immJ};
-    wire next_PC_JALR = tmp_r1_val + {{20{immI[11]}}, immI};
+    wire [31:0] next_PC_JAL = inst_addr + {{11{immJ[20]}}, immJ};
+    wire [31:0] next_PC_JALR = tmp_r1_val + {{20{immI[11]}}, immI};
 
     wire br_pred = 1;
-    wire next_PC_BR = br_pred ?  inst_addr + {{19{immB[12]}}, immB} :inst_addr + 4 ;
+    wire [31:0] next_PC_BR = br_pred ?  inst_addr + {{19{immB[12]}}, immB} :inst_addr + 4 ;
 
 
     // wire br_pred = br_predictor(); has not finished yet
@@ -157,8 +157,8 @@ module Decoder (
     wire need_r1 = opcode == ARITH || opcode == ARITHI || opcode == LOAD || opcode == STORE || opcode == BR ;
     wire need_r2 = opcode == ARITH || opcode == STORE || opcode == BR;
 
-    wire need_rob = is_stall;
-    wire need_rs = opcode == ARITH || opcode == ARITHI || opcode == BR  || opcode == JAL || opcode == JALR;
+    wire need_rob = !is_stall;
+    wire need_rs = opcode == ARITH || opcode == ARITHI || opcode == BR ;
     wire need_lsb = opcode == LOAD || opcode == STORE;
     wire tmp_r1_val;
     wire tmp_r2_val;

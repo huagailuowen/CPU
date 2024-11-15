@@ -35,7 +35,7 @@ module Fetcher(
     wire tmp_fetching = inst_handle ? 1 : ((rob_clear || !is_stall)? 0 : fetching);
     wire [31:0] tmp_inst = inst_ready_in ? inst_in : inst;
     assign inst_req = (rob_clear) ? 0 : !fetching;
-    assign [31:0] inst_addr = PC;
+    assign inst_addr = PC;
 
 
 

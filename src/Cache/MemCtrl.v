@@ -123,6 +123,9 @@ else if (rdy_in)
                 ready_out <= 0;
             end
         end 
+        else begin
+            ready_out <= 0;
+        end
     end
 end
 
