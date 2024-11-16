@@ -122,6 +122,7 @@ begin
                 rd_id[i] <= 0;
                 type[i] <= 0;
             end
+            rob_clear <= 0;
         end
         else begin
             if(rob_input && !is_pop) begin

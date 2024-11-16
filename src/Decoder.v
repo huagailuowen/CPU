@@ -160,20 +160,20 @@ module Decoder (
     wire need_rob = !is_stall;
     wire need_rs = opcode == ARITH || opcode == ARITHI || opcode == BR ;
     wire need_lsb = opcode == LOAD || opcode == STORE;
-    wire tmp_r1_val;
-    wire tmp_r2_val;
+    wire [31:0] tmp_r1_val;
+    wire [31:0] tmp_r2_val;
 
     assign rs1_id = rs1;
     assign rob_qry1_id = rs1_dep;
     assign tmp_r1_has_dep = need_r1 ? (rs1_has_dep ? (rob_qry1_fi ? 0 : 1): 0) : 0;
-    assign tmp_r1_dep = rs1_has_dep ? (rob_qry1_fi ? 0 : rs1_dep) : 0;
+    wire [`ROB_SIZE_BIT-1:0] tmp_r1_dep = rs1_has_dep ? (rob_qry1_fi ? 0 : rs1_dep) : 0;
     // assign tmp_r1_val = rs1_has_dep ? (rob_qry1_value) : rs1_val;
     assign tmp_r1_val = rs1_has_dep ? (rob_qry1_fi ? rob_qry1_value : 0) : rs1_val;
     
     assign rs2_id = rs2;
     assign rob_qry2_id = rs2_dep;
     assign tmp_r2_has_dep = need_r2 ? (rs2_has_dep ? (rob_qry2_fi ? 0 : 1): 0) : 0;
-    assign tmp_r2_dep = rs2_has_dep ? (rob_qry2_fi ? 0 : rs2_dep) : 0;
+    wire [`ROB_SIZE_BIT-1:0] tmp_r2_dep = rs2_has_dep ? (rob_qry2_fi ? 0 : rs2_dep) : 0;
     // assign tmp_r2_val = rs2_has_dep ? (rob_qry2_value) : rs2_val;
     assign tmp_r2_val = rs2_has_dep ? (rob_qry2_fi ? rob_qry2_value : 0) : rs2_val;
     
@@ -276,12 +276,12 @@ begin
                 AUIPC: begin
                     rob_type <= `ROB_REG;
                     //add upper immediate to pc
-                    rob_value <= inst_addr + {immU, 12'b0};
+                    rob_value <= inst_addr + immU;
                 end
                 LUI: begin
                     rob_type <= `ROB_REG;
                     //load upper immediate
-                    rob_value <= {immU, 12'b0};
+                    rob_value <= immU;
                 end
                 LOAD: begin
                     rob_type <= `ROB_REG;

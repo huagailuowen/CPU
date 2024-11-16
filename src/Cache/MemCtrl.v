@@ -79,35 +79,12 @@ begin
         is_working <= 0;
         ready_out <= 0;
     end
-else if (rdy_in && rob_clear)
-    begin
-        if(is_working && !cur_is_write) begin
-            // stop anything when the rob is clear
-            // so the new_task must be low bit
-            is_working <= 0;
-            ready_out <= 0;
-        end
-    end
 else if (rdy_in)
     begin
-        if(is_working && new_task) begin
-            $display("Warning: new task is coming while the last one is not finished");
+        if(is_working && new_task && !rob_clear) begin
+            $display("Warning: new task is coming while the last one is not finished, while not rob_clear");
         end
-        if(is_working) begin
-            if(cur_state == work_type[1:0]) begin
-                is_working <= 0;
-                ready_out <= !cur_is_write;
-            end
-            case (cur_state) 
-                2'b00: cur_data_out[7:0] <= mem_din;
-                2'b01: cur_data_out[15:8] <= mem_din;
-                2'b10: cur_data_out[23:16] <= mem_din;
-                2'b11: cur_data_out[31:24] <= mem_din;
-            endcase
-            cur_state <= cur_state + 1;
-            // cur_data_out[end_pos:start_pos] <= mem_dout;
-        end 
-        else if(new_task) begin
+        if(new_task) begin
             cur_is_write <= is_write;
             cur_addr <= addr;
             cur_data_in <= data_in;
@@ -123,7 +100,22 @@ else if (rdy_in)
                 ready_out <= 0;
             end
         end 
-        else begin
+        else if(is_working) begin
+            if(cur_state == work_type[1:0] || (rob_clear && !cur_is_write)) begin
+                is_working <= 0;
+                ready_out <= !cur_is_write && !rob_clear;
+            end
+            case (cur_state) 
+                2'b00: cur_data_out[7:0] <= mem_din;
+                2'b01: cur_data_out[15:8] <= mem_din;
+                2'b10: cur_data_out[23:16] <= mem_din;
+                2'b11: cur_data_out[31:24] <= mem_din;
+            endcase
+            cur_state <= cur_state + 1;
+            // cur_data_out[end_pos:start_pos] <= mem_dout;
+        end 
+        
+        if(!is_working && !new_task) begin
             ready_out <= 0;
         end
     end

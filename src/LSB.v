@@ -95,6 +95,11 @@ module LSB(
     wire tmp_lsb_r2_has_dep = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? 0 : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? 0 : lsb_r2_has_dep);
     wire [31:0] tmp_lsb_r2_val = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? rs_value : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? lsb_value : lsb_r2_val);    
 
+    wire [`ROB_SIZE_BIT-1:0]debug1 = r1_dep[head]; 
+    wire [`ROB_SIZE_BIT-1:0]debug2 = r2_dep[head]; 
+    wire [`ROB_SIZE_BIT-1:0]debug3 = r1_has_dep[head];
+    wire [`ROB_SIZE_BIT-1:0]debug4 = r2_has_dep[head];
+    
     genvar gi;
     generate
         for(gi = 0; gi < `RS_SIZE; gi = gi + 1) begin
@@ -177,7 +182,7 @@ begin
                 head <= head + 1;
             end
             if(need_data) begin
-                if(!is_write && data_handle || is_write && !is_pop) begin
+                if(!is_write && data_handle) begin
                     // when it is write and data handle, we just remove it !!!! 
                     // or when lsb_full something wrong
                     state[head] <= Executing;

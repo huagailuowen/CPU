@@ -44,11 +44,11 @@ module RS(
     reg [5:0] rs_size;
     assign rs_full = (rs_size == RS_SIZE_MAX) || (rs_size + 1 == RS_SIZE_MAX && inst_input && !merge_exe[0]);
 
-    reg busy[0:`RS_SIZE-1];
+    reg busy [0:`RS_SIZE-1];
     reg [31:0] r1_val[0:`RS_SIZE-1];
     reg [31:0] r2_val[0:`RS_SIZE-1];
-    reg r1_has_dep[0:`RS_SIZE-1];
-    reg r2_has_dep[0:`RS_SIZE-1];
+    reg r1_has_dep [0:`RS_SIZE-1];
+    reg r2_has_dep [0:`RS_SIZE-1];
     reg [`ROB_SIZE_BIT-1:0] r1_dep[0:`RS_SIZE-1];
     reg [`ROB_SIZE_BIT-1:0] r2_dep[0:`RS_SIZE-1];
     // reg [31:0] imm[0:`RS_SIZE-1];
@@ -71,7 +71,11 @@ module RS(
     wire [31:0] tmp_rs_r1_val = (rs_fi && rs_r1_has_dep && rs_rob_id == rs_r1_dep) ? rs_value : ((lsb_fi && rs_r1_has_dep && lsb_rob_id == rs_r1_dep) ? lsb_value : rs_r1_val);
     wire tmp_rs_r2_has_dep = (rs_fi && rs_r2_has_dep && rs_rob_id == rs_r2_dep) ? 0 : ((lsb_fi && rs_r2_has_dep && lsb_rob_id == rs_r2_dep) ? 0 : rs_r2_has_dep);
     wire [31:0] tmp_rs_r2_val = (rs_fi && rs_r2_has_dep && rs_rob_id == rs_r2_dep) ? rs_value : ((lsb_fi && rs_r2_has_dep && lsb_rob_id == rs_r2_dep) ? lsb_value : rs_r2_val);    
-
+    
+    assign merge_free[0] = merge_free[1];
+    assign merge_free_id[0] = merge_free_id[1];
+    assign merge_exe[0] = merge_exe[1];
+    assign merge_exe_id[0] = merge_exe_id[1];
     genvar gi;
     generate
         for(gi = `RS_SIZE; gi < `RS_SIZE << 1; gi = gi + 1)
@@ -81,11 +85,11 @@ module RS(
             assign merge_exe[gi] = busy[gi-`RS_SIZE] && !r1_has_dep[gi-`RS_SIZE] && !r2_has_dep[gi-`RS_SIZE];
             assign merge_exe_id[gi] = gi-`RS_SIZE;
         end
-        for(gi = 0; gi < `RS_SIZE; gi = gi + 1)
+        for(gi = 1; gi < `RS_SIZE; gi = gi + 1)
         begin
-            assign merge_free[gi] = merge_free[gi<<1] && merge_free[gi<<1|1];
+            assign merge_free[gi] = merge_free[gi<<1] || merge_free[gi<<1|1];
             assign merge_free_id[gi] = merge_free[gi<<1] ? merge_free_id[gi<<1] : merge_free_id[gi<<1|1];
-            assign merge_exe[gi] = merge_exe[gi<<1] && merge_exe[gi<<1|1];
+            assign merge_exe[gi] = merge_exe[gi<<1] || merge_exe[gi<<1|1];
             assign merge_exe_id[gi] = merge_exe[gi<<1] ? merge_exe_id[gi<<1] : merge_exe_id[gi<<1|1];
         end
     endgenerate

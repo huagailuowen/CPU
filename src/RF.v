@@ -68,7 +68,7 @@ begin
                     $display("Warning: RF update value without dependency");  
                 if(update_val_id != update_dep_id)
                     $display("Warning: MAYBE ROB is completely full, pop one and push one");
-                if(reg_dep[update_val_id] == update_val_dep && update_val_id != update_dep_id) begin
+                if(reg_dep[update_val_id] == update_val_dep && (!is_update_dep || update_val_id != update_dep_id)) begin
                     has_dep[update_val_id] <= 0;
                 end
             end
