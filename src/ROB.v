@@ -73,7 +73,8 @@ module ROB (
     reg [5:0] rob_size;
 
     localparam ROB_SIZE_MAX = 6'b100000;
-    assign rob_full = rob_size == ROB_SIZE_MAX || (rob_size == ROB_SIZE_MAX - 1 && !(is_finished[head] && !rob_empty) && rob_input);
+    // assign rob_full = rob_size == ROB_SIZE_MAX || (rob_size == ROB_SIZE_MAX - 1 && !(is_finished[head] && !rob_empty) && rob_input);
+    assign rob_full = rob_size >=1;
     assign rob_free_id = rob_clear ? 0 : (rob_input ? tail + 1 : tail);
     wire is_pop = is_finished[head] && !rob_empty;
     assign rob_head_id = rob_clear ? 0 : (is_pop ? head+1 : head);

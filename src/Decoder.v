@@ -179,7 +179,7 @@ module Decoder (
     
     // tell rob information to puhs 
     wire tmp_rob_fi = opcode == AUIPC || opcode == LUI || opcode == JAL || opcode == JALR;
-
+    reg [31:0] cnt;
 always @(posedge clk_in or posedge rst_in) 
 begin
     if (rst_in || is_stall) begin
@@ -194,6 +194,7 @@ begin
         r1_dep <= 0;
         r2_dep <= 0;
         rob_id <= 0;
+        cnt <= 0;
     end
     else if (rdy_in) 
     begin
@@ -212,6 +213,18 @@ begin
         end
         else
         begin
+            if (inst_input && inst_addr == 32'h188) begin
+                $display("arrive 188\n");
+            end
+            if (inst_input && inst_addr == 32'h1F4) begin
+                $display("arrive 1f4\n");
+            end
+            if (cnt<1000) begin
+                cnt <= cnt + 1;
+                $display("%h %h", inst_addr, inst);
+            end
+            
+            
             rob_fi <= tmp_rob_fi;
             rob_id <= rob_vacant_id;
             // rob_addr <= inst_addr;
