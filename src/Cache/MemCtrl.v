@@ -36,8 +36,8 @@ module MemCtrl(
     // output wire [7:0] mem_data_out, // the data
  
 );
-    assign mem_a = new_task ? addr : cur_addr + cur_state + 1'b1;
-    assign mem_wr = new_task ? is_write : cur_is_write;
+    assign mem_a = new_task ? addr : cur_addr + cur_state + 1;
+    assign mem_wr = new_task ? is_write : (!is_working ? 0 : cur_is_write);
     // wire [4:0] start_pos = cur_state << 3;
     // wire [4:0] end_pos = start_pos + 7;
     wire [7:0] switch_data = (cur_state == 2'b00) ? cur_data_in[15:8] :
@@ -101,7 +101,7 @@ else if (rdy_in)
             end
         end 
         else if(is_working) begin
-            if(cur_state == work_type[1:0] || (rob_clear && !cur_is_write)) begin
+            if(cur_state == cur_work_type[1:0] || (rob_clear && !cur_is_write)) begin
                 is_working <= 0;
                 ready_out <= !cur_is_write && !rob_clear;
             end

@@ -15,7 +15,7 @@ module ram
 
 wire       ram_bram_we;
 wire [7:0] ram_bram_dout;
-
+reg last_en;
 single_port_ram_sync #(.ADDR_WIDTH(ADDR_WIDTH),
                        .DATA_WIDTH(8)) ram_bram(
   .clk(clk_in),
@@ -25,7 +25,11 @@ single_port_ram_sync #(.ADDR_WIDTH(ADDR_WIDTH),
   .dout_a(ram_bram_dout)
 );
 
-assign ram_bram_we = (en_in) ? ~r_nw_in      : 1'b0;
-assign d_out       = (en_in) ? ram_bram_dout : 8'h00;
+assign ram_bram_we = (last_en) ? ~r_nw_in      : 1'b0;
+assign d_out       = (last_en) ? ram_bram_dout : 8'h00;
+always @(posedge clk_in) 
+begin
+  last_en <= en_in;
+end
 
 endmodule

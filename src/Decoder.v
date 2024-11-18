@@ -213,16 +213,16 @@ begin
         end
         else
         begin
-            if (inst_input && inst_addr == 32'h188) begin
-                $display("arrive 188\n");
-            end
-            if (inst_input && inst_addr == 32'h1F4) begin
-                $display("arrive 1f4\n");
-            end
-            if (cnt<1000) begin
-                cnt <= cnt + 1;
-                $display("%h %h", inst_addr, inst);
-            end
+            // if (inst_input && inst_addr == 32'h188) begin
+            //     $display("arrive 188\n");
+            // end
+            // if (inst_input && inst_addr == 32'h1F4) begin
+            //     $display("arrive 1f4\n");
+            // end
+            // if (1) begin
+            //     cnt <= cnt + 1;
+            //     $display("%h %h", inst_addr, inst);
+            // end
             
             
             rob_fi <= tmp_rob_fi;
