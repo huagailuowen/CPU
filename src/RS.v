@@ -40,7 +40,7 @@ module RS(
     output wire [31:0] alu_r2_val,
     output wire [`ROB_SIZE_BIT-1:0] inst_rob_id
 );
-    localparam RS_SIZE_MAX = 6'b000100;
+    localparam RS_SIZE_MAX = 6'b001000;
     reg [5:0] rs_size;
     assign rs_full = (rs_size == RS_SIZE_MAX) || (rs_size + 1 == RS_SIZE_MAX && inst_input && !merge_exe[0]);
 

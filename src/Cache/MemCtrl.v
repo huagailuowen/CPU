@@ -36,7 +36,7 @@ module MemCtrl(
     // output wire [7:0] mem_data_out, // the data
  
 );
-    assign mem_a = new_task ? addr : cur_addr + cur_state + 1;
+    assign mem_a = new_task ? addr : (!is_working ? 0 : cur_addr + cur_state + 1);
     assign mem_wr = new_task ? is_write : (!is_working ? 0 : cur_is_write);
     // wire [4:0] start_pos = cur_state << 3;
     // wire [4:0] end_pos = start_pos + 7;

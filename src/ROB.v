@@ -79,10 +79,10 @@ module ROB (
     wire is_pop = is_finished[head] && !rob_empty;
     assign rob_head_id = rob_clear ? 0 : (is_pop ? head+1 : head);
     // handle the query, 
-    assign rob_qry1_ready = (rob_input && tail == rob_qry1_id)? rob_fi : is_finished[rob_qry1_id];
-    assign rob_qry1_value = (rob_input && tail == rob_qry1_id)? rob_value : res[rob_qry1_id];
-    assign rob_qry2_ready = (rob_input && tail == rob_qry2_id)? rob_fi : is_finished[rob_qry2_id];
-    assign rob_qry2_value = (rob_input && tail == rob_qry2_id)? rob_value : res[rob_qry2_id];
+    assign rob_qry1_ready = (rob_input && tail == rob_qry1_id)? rob_fi : (rs_fi && rs_rob_id ==rob_qry1_id ? 1 : (lsb_fi && lsb_rob_id == rob_qry1_id ? 1 : is_finished[rob_qry1_id]));
+    assign rob_qry1_value = (rob_input && tail == rob_qry1_id)? rob_value : (rs_fi && rs_rob_id ==rob_qry1_id ? rs_value : (lsb_fi && lsb_rob_id == rob_qry1_id ? lsb_value : res[rob_qry1_id]));
+    assign rob_qry2_ready = (rob_input && tail == rob_qry2_id)? rob_fi : (rs_fi && rs_rob_id ==rob_qry2_id ? 1 : (lsb_fi && lsb_rob_id == rob_qry2_id ? 1 : is_finished[rob_qry2_id]));
+    assign rob_qry2_value = (rob_input && tail == rob_qry2_id)? rob_value : (rs_fi && rs_rob_id ==rob_qry2_id ? rs_value : (lsb_fi && lsb_rob_id == rob_qry2_id ? lsb_value : res[rob_qry2_id]));
     // interaction with RF
     assign is_update_val = is_pop && (type[head] == `ROB_REG || type[head] == `ROB_REGI);
     assign update_val_id = rd_id[head];
