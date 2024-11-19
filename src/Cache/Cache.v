@@ -35,6 +35,7 @@ module Cache(
     
     //the data is with priority ?
     // the handle must calculate in this cycle
+    // the ic instruction is handled by the fetcher
 );
     wire i_hit;
     wire [31:0] i_data;

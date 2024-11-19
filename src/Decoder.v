@@ -113,10 +113,33 @@ module Decoder (
     assign lsb_rob_id = rob_id;
     assign lsb_imm = imm;
 
+    wire is_c_inst = inst_addr[1] ? 1 : (inst[1:0] == 2'b11 ? 0 : 1);
+    wire [15:0] inst_c = inst_addr[1] ? inst[31:16] : inst[15:0];
+    wire [1:0] opcode_c = inst_c[1:0]
+    wire [2:0] func3_c = inst_c[15:13];
+    wire [3:0] func4_c = inst_c[15:12]; 
+
+    wire need_r1_c = (opcode_c == 2'b01 && (func3_c == 3'b100 || func3_c[2:1] == 2'b11)) || opcode_c == 2'b00; 
+    wire need_r2_c = (opcode_c == 2'b01) || opcode_c == 2'b00; 
+
+    wire [4:0] rs1_rd = need_r1_c ?{{2'b01},inst_c[9:7]} : inst_c[11:7];
+    wire [4:0] rs2_rd = need_r2_c ?{{2'b01},inst_c[4:2]} : inst_c[11:7];
+    wire [6:0] imm7 = {inst_c[5],inst_c[12:10],inst_c[6],2'b00}; // lw,sw
+    wire [5:0] imm6 = {inst_c[12],inst_c[6:2]}; //CI also for lui
+    wire [9:0] imm10 = {inst_c[12],inst_c[4:3],inst_c[5],inst_c[2],inst_c[6],4'b0000};//addi16sp
+    wire [8:0] imm9 = {inst_c[12],inst_c[6:5],inst_c[2],inst_c[11:10],inst_c[4:3],1'b0};//br
+    wire [9:0] imm10sp = {inst_c[10:7],inst_c[12:11],inst_c[5],inst_c[6],2'b00};//addi4spn
+    wire [11:0] imm12 = {inst_c[12],inst_c[7],inst_c[9:8],inst_c[6],inst_c[7],inst_c[2],inst_c[10],inst_c[5:3],{1''b0}};//li
+
+    wire [7:0] imm8swsp = {inst_c[8:7],inst_c[12:9],2'b00};//swsp
+    wire [7:0] imm8lwsp = {inst_c[3:2],inst_c[12],inst_c[6:4],2'b00};//lwsp
+    wire with_sp = opcode_c == 2'b00 && func3_c == 3'b000 || opcode_c == 2'b01 && func3_c == 3'b011 || opcode_c == 2'b10 && (func3_c == 3'b010 || func3_c == 3'b110); 
+
+
     wire [6:0] opcode = inst[6:0];
-    wire [4:0] rd = opcode != BR ? inst[11:7] : {{4{1'b0}} , br_pred};
-    wire [4:0] rs1 = inst[19:15];
-    wire [4:0] rs2 = inst[24:20];
+    wire [4:0] rd = !is_c_inst ? (opcode != BR ? inst[11:7] : {{4{1'b0}} , br_pred}) : (opcode_c == 2'b01 && func3_c[2:1] == 2'b11 ? {{4{1'b0}} , br_pred} : (opcode_c == 2'b00 ? rs2_rd : rs1_rd));
+    wire [4:0] rs1 = !is_c_inst ? inst[19:15] : (with_sp ? 5'b00010 :rs1_rd);
+    wire [4:0] rs2 = !is_c_inst ? inst[24:20] : rs2_rd;
     wire [2:0] func3 = inst[14:12];
     wire [6:0] func7 = inst[31:25];
     wire [11:0] immI = inst[31:20];
@@ -133,33 +156,38 @@ module Decoder (
     localparam LUI = 7'b0110111;
     localparam LOAD = 7'b0000011;
     localparam STORE = 7'b0100011;
-    localparam ARITH = 7'b0110011; //R
-    localparam ARITHI = 7'b0010011; //
-    wire is_arithi_star = opcode == ARITHI && (func3 == 3'b001 || func3 == 3'b101);
+    localparam ARITH = 7'b0110011; 
+    localparam ARITHI = 7'b0010011; 
+    wire is_arithi_star = !is_c_inst ? opcode == ARITHI && (func3 == 3'b001 || func3 == 3'b101);
 
     // interaction with the insFetcher
-    wire need_set_PC = opcode == JAL || opcode == JALR || opcode == BR;
-    wire [31:0] next_PC_JAL = inst_addr + {{11{immJ[20]}}, immJ};
-    wire [31:0] next_PC_JALR = tmp_r1_val + {{20{immI[11]}}, immI};
-
+    wire need_set_PC = !is_c_inst ? opcode == JAL || opcode == JALR || opcode == BR : opcode_c == 2'b10 && func3_c == 3'b100 && inst_c[6:2] == 0 || opcode_c == 2'b01 && (func3_c == 3'b101 || func3_c == 3'b001 || func3_c[2:1] == 2'b11);
+    wire [31:0] next_PC_JAL = !is_c_inst ? inst_addr + {{11{immJ[20]}}, immJ} : inst_addr + {{20{imm12[11]}}, imm12}; // also j
+    wire [31:0] next_PC_JALR = !is_c_inst ? tmp_r1_val + {{20{immI[11]}}, immI} : tmp_r1_val;
     wire br_pred = 1;
-    wire [31:0] next_PC_BR = br_pred ?  inst_addr + {{19{immB[12]}}, immB} :inst_addr + 4 ;
+    wire [31:0] next_PC_BR = !is_c_inst ? (br_pred ?  inst_addr + {{19{immB[12]}}, immB} :inst_addr + 4) : (br_pred ? inst_addr + {{23{imm9[8]}}, imm9} : inst_addr + 2);
 
 
     // wire br_pred = br_predictor(); has not finished yet
 
-    assign is_stall = !inst_input || rob_clear || rob_full || rs_full || lsb_full || (opcode == JALR && tmp_r1_has_dep);
-    assign next_PC = need_set_PC ? (opcode == JAL ? next_PC_JAL : (opcode == BR ? next_PC_BR : next_PC_JALR)) : inst_addr + 4;
-    
-
+    assign is_stall = !inst_input || rob_clear || rob_full || rs_full || lsb_full || (is_jalr && tmp_r1_has_dep);
+    wire is_jal = !is_c_inst ? opcode == JAL : opcode_c == 2'b01 && func3_c[1:0] == 2'b01;
+    wire is_jalr = !is_c_inst ? opcode == JALR : opcode_c == 2'b10 && func3_c == 3'b100 && inst_c[6:2] == 0;    
+    wire is_br = !is_c_inst ? opcode == BR : opcode_c == 2'b01 && func3_c[2:1] == 2'b11;
+    assign next_PC = need_set_PC ? (is_jal ? next_PC_JAL : (is_br ? next_PC_BR : next_PC_JALR)) : (!is_c_inst ? inst_addr + 4 : inst_addr + 2);
+    wire is_ld = !is_c_inst ? opcode == LOAD : opcode_c == 2'b00 && func3_c == 3'b010;
+    wire is_st = !is_c_inst ? opcode == STORE : opcode_c == 2'b00 && func3_c == 3'b110;
+    wire is_arithi = !is_c_inst ? opcode == ARITHI : (opcode_c == 2'b01 && (func3_c == 3'b011 && inst_c[11:7] == 5'b00010 || func3_c != 3'b100 && inst_c[11:10] == 2'b11) || func3_c == 3'b000);
+    wire is_arith = !is_c_inst ? opcode == ARITH : 
 
     // fetch the information from RF & ROB  
-    wire need_r1 = opcode == ARITH || opcode == ARITHI || opcode == LOAD || opcode == STORE || opcode == BR ;
-    wire need_r2 = opcode == ARITH || opcode == STORE || opcode == BR;
+    wire need_r1 = !is_c_inst ? opcode == ARITH || opcode == ARITHI || opcode == LOAD || opcode == STORE || opcode == BR :;
+    wire need_r2 = !is_c_inst ? opcode == ARITH || opcode == STORE || opcode == BR;
+
 
     wire need_rob = !is_stall;
-    wire need_rs = opcode == ARITH || opcode == ARITHI || opcode == BR ;
-    wire need_lsb = opcode == LOAD || opcode == STORE;
+    wire need_rs = !is_c_inst ? opcode == ARITH || opcode == ARITHI || opcode == BR : !(opcode_c == 2'b00 && func3_c != 0) && !is_jal && !is_jalr;
+    wire need_lsb = !is_c_inst ? opcode == LOAD || opcode == STORE : opcode_c == 2'b00 && func3_c != 0;
     wire [31:0] tmp_r1_val;
     wire [31:0] tmp_r2_val;
 
@@ -228,33 +256,43 @@ begin
             rob_fi <= tmp_rob_fi;
             rob_id <= rob_vacant_id;
             // rob_addr <= inst_addr;
-            if(opcode == BR) begin
+            if(is_br) begin
                 // the reverse of the br_pred
                 if(br_pred) begin
-                    rob_addr <= inst_addr + 4;
+                    rob_addr <= !is_c_inst ? inst_addr + 4 : inst_addr + 2;
                 end
                 else begin
-                    rob_addr <= inst_addr + {{19{immB[12]}}, immB};
+                    rob_addr <= !is_c_inst ? inst_addr + {{19{immB[12]}}, immB} : {{23{imm9[8]}}, imm9};
                 end
             end
+            if(is_c_inst) begin
+                if(opcode_c == 2'b10 && func3_c == 3'b100 && inst_c[6:2] == 0) begin
+                    rob_reg_id <= {{4'b0},inst_c[12]};
+                end
+                else if(opcode_c == 2'b01 && func3_c[1:0] == 2'b01) begin
+                    rob_reg_id <= {{4'b0},~func3_c[2]};
+                end
+                else begin
+                    rob_reg_id <= rd;
+                end
+            end
+            else begin
+                rob_reg_id <= rd;
+            end 
             
-            rob_reg_id <= rd;
-
-
             r1_has_dep <= tmp_r1_has_dep;
             r2_has_dep <= tmp_r2_has_dep;
             r1_dep <= tmp_r1_dep;
             r2_dep <= tmp_r2_dep;
             rob_input <= need_rob;
             rs_input <= need_rs;
-            rs_type[4] <= opcode == BR;
+            rs_type[4] <= is_br;
             rs_type[3:1] <= func3;
             rs_type[0] <= (opcode == BR || (opcode == ARITHI && !is_arithi_star)) ? 0 : func7[5];
             // U&J won't be in RS
             lsb_input <= need_lsb;
             lsb_type[3] <= opcode == STORE;
             lsb_type[2:0] <= func3;
-
 
             if(need_r1)
                 r1_val <= tmp_r1_val;
@@ -305,6 +343,14 @@ begin
                     rob_type <= `ROB_ST;
                     imm <= {{20{immS[11]}} , immS};
                     //store
+                end
+            endcase
+        end 
+        else begin
+            //ic
+            case(opcode_c) 
+                2'b01 : begin
+                    
                 end
             endcase
         end
