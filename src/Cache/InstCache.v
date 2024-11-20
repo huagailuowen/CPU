@@ -14,14 +14,14 @@ module InstCache(
     input wire [31:0] addr_in
 );
     localparam CACHE_SIZE_BIT = 4;
-    localparam TAG_LEN = 32 - CACHE_SIZE_BIT  - 2;
+    localparam TAG_LEN = 32 - CACHE_SIZE_BIT  - 1;
     reg [TAG_LEN-1:0] tag [0:(1<<CACHE_SIZE_BIT)-1];
     reg valid [0:(1<<CACHE_SIZE_BIT)-1];
     reg [31:0] data[0:(1<<CACHE_SIZE_BIT)-1];
 
-    wire [CACHE_SIZE_BIT-1:0] cache_pos = addr_in[CACHE_SIZE_BIT+1:2];
-    wire [CACHE_SIZE_BIT-1:0] updata_cache_pos = addr_in[CACHE_SIZE_BIT+1:2];
-    assign is_hit = valid[cache_pos] && tag[cache_pos] == addr[31:CACHE_SIZE_BIT+2];
+    wire [CACHE_SIZE_BIT-1:0] cache_pos = addr_in[CACHE_SIZE_BIT:1];
+    wire [CACHE_SIZE_BIT-1:0] updata_cache_pos = addr_in[CACHE_SIZE_BIT:1];
+    assign is_hit = valid[cache_pos] && tag[cache_pos] == addr[31:CACHE_SIZE_BIT+1];
     assign data_out = data[cache_pos];
 
     // wire cache_pos_in = {{addr_in[CACHE_SIZE_BIT-1:1]} , 1'b0};
@@ -39,14 +39,14 @@ if (rst_in)
 else if(rdy_in)
     begin
         if(is_update)begin
-            if(addr_in[1:0] != 2'b00)begin
-                $display("Error: update addr_in[1:0] != 2'b00");
-            end
-            id(addr[1:0] != 2'b00)begin
-                $display("Error: query addr[1:0] != 2'b00");
-            end
+            // if(addr_in[1:0] != 2'b00)begin
+            //     $display("Error: update addr_in[1:0] != 2'b00");
+            // end
+            // id(addr[1:0] != 2'b00)begin
+            //     $display("Error: query addr[1:0] != 2'b00");
+            // end
             valid[updata_cache_pos] <= 1;
-            tag[updata_cache_pos] <= addr_in[31:CACHE_SIZE_BIT+2];
+            tag[updata_cache_pos] <= addr_in[31:CACHE_SIZE_BIT+1];
             data[updata_cache_pos] <= data_in;
         end
     end    
