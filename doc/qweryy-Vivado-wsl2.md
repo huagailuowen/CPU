@@ -1,3 +1,7 @@
+# Toy CPU 2024
+
+基于 RV32IC 指令集。
+
 ## WSL2 上板指引
 
 > Microsoft 官方文档：https://learn.microsoft.com/zh-cn/windows/wsl/connect-usb
