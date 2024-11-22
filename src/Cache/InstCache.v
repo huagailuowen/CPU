@@ -19,7 +19,7 @@ module InstCache(
     reg valid [0:(1<<CACHE_SIZE_BIT)-1];
     reg [31:0] data[0:(1<<CACHE_SIZE_BIT)-1];
 
-    wire [CACHE_SIZE_BIT-1:0] cache_pos = addr_in[CACHE_SIZE_BIT:1];
+    wire [CACHE_SIZE_BIT-1:0] cache_pos = addr[CACHE_SIZE_BIT:1];
     wire [CACHE_SIZE_BIT-1:0] updata_cache_pos = addr_in[CACHE_SIZE_BIT:1];
     assign is_hit = valid[cache_pos] && tag[cache_pos] == addr[31:CACHE_SIZE_BIT+1];
     assign data_out = data[cache_pos];
