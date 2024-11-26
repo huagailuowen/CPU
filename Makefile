@@ -18,7 +18,7 @@ IV_FLAGS := -I$(SRC_DIR)
 ifeq ($(ONLINE_JUDGE), true)
 IV_FLAGS += -D ONLINE_JUDGE
 all: build_sim
-	@mv $(TESTSPACE_DIR)/test $(PWD)/code
+	@cp $(TESTSPACE_DIR)/test $(PWD)/code
 else
 all: testcases build_sim
 endif
@@ -31,7 +31,10 @@ ifndef name
 	$(error name is not set. Usage: make run_sim name=your_testcase_name)
 endif
 
-build_sim: $(SIM_DIR)/testbench.v $(V_SOURCES)
+$(TESTSPACE_DIR):
+	@mkdir -p $(TESTSPACE_DIR)
+
+build_sim: $(SIM_DIR)/testbench.v $(V_SOURCES) $(TESTSPACE_DIR)
 	@iverilog $(IV_FLAGS) -o $(TESTSPACE_DIR)/test $(SIM_DIR)/testbench.v $(V_SOURCES)
 
 build_sim_test: testcases _no_testcase_name_check
@@ -41,7 +44,7 @@ build_sim_test: testcases _no_testcase_name_check
 	@cp $(SIM_TESTCASE_DIR)/*$(name)*.ans $(TESTSPACE_DIR)/test.ans
 
 
-build_fpga_test: testcases _no_testcase_name_check
+build_fpga_test: testcases _no_testcase_name_check $(TESTSPACE_DIR)
 	@cp $(FPGA_TESTCASE_DIR)/*$(name)*.c $(TESTSPACE_DIR)/test.c
 	@cp $(FPGA_TESTCASE_DIR)/*$(name)*.data $(TESTSPACE_DIR)/test.data
 	@cp $(FPGA_TESTCASE_DIR)/*$(name)*.dump $(TESTSPACE_DIR)/test.dump
