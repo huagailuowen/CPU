@@ -42,7 +42,6 @@ module RS(
 );
     localparam RS_SIZE_MAX = 6'b001000;
     reg [5:0] rs_size;
-    assign rs_full = (rs_size == RS_SIZE_MAX) || (rs_size + 1 == RS_SIZE_MAX && inst_input && !merge_exe[0]);
 
     reg busy [0:`RS_SIZE-1];
     reg [31:0] r1_val[0:`RS_SIZE-1];
@@ -93,6 +92,7 @@ module RS(
             assign merge_exe_id[gi] = merge_exe[gi<<1] ? merge_exe_id[gi<<1] : merge_exe_id[gi<<1|1];
         end
     endgenerate
+    assign rs_full = (rs_size == RS_SIZE_MAX) || (rs_size + 1 == RS_SIZE_MAX && inst_input && !merge_exe[0]);
     assign alu_input = merge_exe[0];
     assign arith_type = type[merge_exe_id[0]];
     assign alu_r1_val = r1_val[merge_exe_id[0]];

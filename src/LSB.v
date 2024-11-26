@@ -43,22 +43,36 @@ module LSB(
     input wire data_ready, // if the data is ready
     input wire [31:0] data_out // the data
 );
-    assign is_write = type[head][3];
-    assign data_addr = r1_val[head] + imm[head];
-    assign data_in = r2_val[head];
-    assign work_type = type[head][2:0];
-    assign need_data = !rob_clear && lsb_size > 0 && ready[head] && !(need_confirm && rob_head_id != rob_id[head]) && state[head] == Nready;
-
-    wire need_confirm = is_write || data_addr[17:16] == 2'b11;
-
+    reg [31:0] r1_val[0:`LSB_SIZE-1];
+    reg [31:0] r2_val[0:`LSB_SIZE-1];
+    reg r1_has_dep[0:`LSB_SIZE-1];
+    reg r2_has_dep[0:`LSB_SIZE-1];
+    reg [`ROB_SIZE_BIT-1:0] r1_dep[0:`LSB_SIZE-1];
+    reg [`ROB_SIZE_BIT-1:0] r2_dep[0:`LSB_SIZE-1];
+    reg [`ROB_SIZE_BIT-1:0] rob_id[0:`LSB_SIZE-1];
+    reg [`LSB_TYPE_BIT-1:0] type[0:`LSB_SIZE-1];
+    reg [31:0] imm[0:`LSB_SIZE-1];
+    reg finished[0:`LSB_SIZE-1];
+    reg [`LSB_SIZE_BIT-1:0] head, tail;
     localparam LSB_SIZE_MAX = 6'b001000;
     localparam Nready = 2'b00;
     // localparam Request = 2'b01;
     localparam Executing = 2'b10;
     localparam Finished = 2'b11;
+
+
+    assign is_write = type[head][3];
+    assign data_addr = r1_val[head] + imm[head];
+    assign data_in = r2_val[head];
+    assign work_type = type[head][2:0];
+    wire need_confirm = is_write || data_addr[17:16] == 2'b11;
     reg [5:0] lsb_size;
     wire ready[0:`LSB_SIZE-1];
     reg [1:0] state[0:`LSB_SIZE-1];
+
+    assign need_data = !rob_clear && lsb_size > 0 && ready[head] && !(need_confirm && rob_head_id != rob_id[head]) && state[head] == Nready;
+
+
 
     wire is_pop = lsb_size > 0 && (is_write && data_handle || !is_write && data_ready);
     assign lsb_fi = !rob_clear && is_pop;
@@ -75,17 +89,6 @@ module LSB(
         finished means cache handle the request,
         we just remove it immediately */
 
-    reg [31:0] r1_val[0:`LSB_SIZE-1];
-    reg [31:0] r2_val[0:`LSB_SIZE-1];
-    reg r1_has_dep[0:`LSB_SIZE-1];
-    reg r2_has_dep[0:`LSB_SIZE-1];
-    reg [`ROB_SIZE_BIT-1:0] r1_dep[0:`LSB_SIZE-1];
-    reg [`ROB_SIZE_BIT-1:0] r2_dep[0:`LSB_SIZE-1];
-    reg [`ROB_SIZE_BIT-1:0] rob_id[0:`LSB_SIZE-1];
-    reg [`LSB_TYPE_BIT-1:0] type[0:`LSB_SIZE-1];
-    reg [31:0] imm[0:`LSB_SIZE-1];
-    reg finished[0:`LSB_SIZE-1];
-    reg [`LSB_SIZE_BIT-1:0] head, tail;
 
 
     assign lsb_full = (lsb_size == LSB_SIZE_MAX) || (lsb_size + 1 == LSB_SIZE_MAX && inst_input && !finished[head]);
@@ -95,10 +98,10 @@ module LSB(
     wire tmp_lsb_r2_has_dep = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? 0 : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? 0 : lsb_r2_has_dep);
     wire [31:0] tmp_lsb_r2_val = (rs_fi && lsb_r2_has_dep && rs_rob_id == lsb_r2_dep) ? rs_value : ((lsb_fi && lsb_r2_has_dep && lsb_rob_id == lsb_r2_dep) ? lsb_value : lsb_r2_val);    
 
-    wire [`ROB_SIZE_BIT-1:0]debug1 = r1_dep[head]; 
-    wire [`ROB_SIZE_BIT-1:0]debug2 = r2_dep[head]; 
-    wire [`ROB_SIZE_BIT-1:0]debug3 = r1_has_dep[head];
-    wire [`ROB_SIZE_BIT-1:0]debug4 = r2_has_dep[head];
+    // wire [`ROB_SIZE_BIT-1:0]debug1 = r1_dep[head]; 
+    // wire [`ROB_SIZE_BIT-1:0]debug2 = r2_dep[head]; 
+    // wire [`ROB_SIZE_BIT-1:0]debug3 = r1_has_dep[head];
+    // wire [`ROB_SIZE_BIT-1:0]debug4 = r2_has_dep[head];
     
     genvar gi;
     generate

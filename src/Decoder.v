@@ -161,17 +161,7 @@ module Decoder (
     wire is_arithi_star = !is_c_inst ? opcode == ARITHI && (func3 == 3'b001 || func3 == 3'b101) : 0;
 
     // interaction with the insFetcher
-    wire need_set_PC = !is_c_inst ? opcode == JAL || opcode == JALR || opcode == BR : opcode_c == 2'b10 && func3_c == 3'b100 && inst_c[6:2] == 0 || opcode_c == 2'b01 && (func3_c == 3'b101 || func3_c == 3'b001 || func3_c[2:1] == 2'b11);
-    wire [31:0] next_PC_JAL = !is_c_inst ? inst_addr + {{11{immJ[20]}}, immJ} : inst_addr + {{20{imm12[11]}}, imm12}; // also j
-    wire [31:0] next_PC_JALR = !is_c_inst ? tmp_r1_val + {{20{immI[11]}}, immI} : tmp_r1_val;
-    wire br_pred = 1;
-    wire [31:0] next_PC_BR = !is_c_inst ? (br_pred ?  inst_addr + {{19{immB[12]}}, immB} :inst_addr + 4) : (br_pred ? inst_addr + {{23{imm9[8]}}, imm9} : inst_addr + 2);
 
-
-    // wire br_pred = br_predictor(); has not finished yet
-
-    assign is_stall = !inst_input || rob_clear || rob_full || rs_full || lsb_full || (is_jalr && tmp_r1_has_dep);
-    assign next_PC = need_set_PC ? (is_jal ? next_PC_JAL : (is_br ? next_PC_BR : next_PC_JALR)) : (!is_c_inst ? inst_addr + 4 : inst_addr + 2);
     wire is_jal = !is_c_inst ? opcode == JAL : opcode_c == 2'b01 && func3_c[1:0] == 2'b01;
     wire is_jalr = !is_c_inst ? opcode == JALR : opcode_c == 2'b10 && func3_c == 3'b100 && inst_c[6:2] == 0;    
     wire is_br = !is_c_inst ? opcode == BR : opcode_c == 2'b01 && func3_c[2:1] == 2'b11;
@@ -187,7 +177,7 @@ module Decoder (
     wire need_r2 = !is_arithi && !(is_c_inst && is_br);// the r2 will be 0, store into the imm
 
     wire need_rob = !is_stall;
-    wire need_rs = !is_c_inst ? opcode == ARITH || opcode == ARITHI || opcode == BR : !(opcode_c == 2'b00 && func3_c != 0 || opcode_c == 2'b10 && func3_c[1:0] == 2'b10) && !is_jal && !is_jalr;
+    wire need_rs = !is_c_inst ? opcode == ARITH || opcode == ARITHI || opcode == BR : !(opcode_c == 2'b00 && func3_c != 0 || opcode_c == 2'b10 && func3_c[1:0] == 2'b10) && !is_jal && !is_jalr && !is_lui;
     wire need_lsb = is_ld || is_st;
     wire [31:0] tmp_r1_val;
     wire [31:0] tmp_r2_val;
@@ -209,6 +199,17 @@ module Decoder (
     // tell rob information to puhs 
     wire tmp_rob_fi = is_auipc || is_lui || is_jal || is_jalr;
     reg [31:0] cnt;
+    wire need_set_PC = !is_c_inst ? opcode == JAL || opcode == JALR || opcode == BR : opcode_c == 2'b10 && func3_c == 3'b100 && inst_c[6:2] == 0 || opcode_c == 2'b01 && (func3_c == 3'b101 || func3_c == 3'b001 || func3_c[2:1] == 2'b11);
+    wire [31:0] next_PC_JAL = !is_c_inst ? inst_addr + {{11{immJ[20]}}, immJ} : inst_addr + {{20{imm12[11]}}, imm12}; // also j
+    wire [31:0] next_PC_JALR = !is_c_inst ? tmp_r1_val + {{20{immI[11]}}, immI} : tmp_r1_val;
+    wire br_pred = 1;
+    wire [31:0] next_PC_BR = !is_c_inst ? (br_pred ?  inst_addr + {{19{immB[12]}}, immB} :inst_addr + 4) : (br_pred ? inst_addr + {{23{imm9[8]}}, imm9} : inst_addr + 2);
+
+    // wire br_pred = br_predictor(); has not finished yet
+
+    assign is_stall = !inst_input || rob_clear || rob_full || rs_full || lsb_full || (is_jalr && tmp_r1_has_dep);
+    assign next_PC = need_set_PC ? (is_jal ? next_PC_JAL : (is_br ? next_PC_BR : next_PC_JALR)) : (!is_c_inst ? inst_addr + 4 : inst_addr + 2);
+
 always @(posedge clk_in or posedge rst_in) 
 begin
     if (rst_in || is_stall) begin
@@ -245,7 +246,6 @@ begin
             if(tot==0 && !is_stall)begin
                 $display("Error: multiple type in one cycle");
                 $display("%d %h %h %d", cnt , inst_addr, inst, need_rs);
-
             end
             // if (inst_input && inst_addr == 32'h188) begin
             //     $display("arrive 188\n");
@@ -253,13 +253,14 @@ begin
             // if (inst_input && inst_addr == 32'h1F4) begin
             //     $display("arrive 1f4\n");
             // end
-            if (cnt <= 1000) begin
-                cnt <= cnt + 1;
-                // // if(inst_addr == 32'h1da)
-                // $display("%d %h %h", cnt , inst_addr, inst);
-                // if(inst_addr == 0)
-                //     $display("arrive 0\n");
-            end
+            // if (cnt <= 6000) begin
+            //     cnt <= cnt + 1;
+            //     if(inst_addr >= 32'h59c && inst_addr <= 32'h59c)
+            //     // if(is_st)
+            //     $display("%d %h %h", cnt , inst_addr, inst);
+            //     // if(inst_addr == 0)
+            //     //     $display("arrive 0\n");
+            // end
             
             rob_fi <= tmp_rob_fi;
             rob_id <= rob_vacant_id;

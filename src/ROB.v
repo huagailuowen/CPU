@@ -58,7 +58,6 @@ module ROB (
     output wire [`ROB_SIZE_BIT-1:0] update_dep
 
 );
-    wire rob_empty = rob_size == 0;
     reg [`ROB_SIZE_BIT-1:0] head;
     reg [`ROB_SIZE_BIT-1:0] tail; 
     reg [4:0] rd_id[0:`ROB_SIZE-1];
@@ -71,6 +70,7 @@ module ROB (
     reg [`ROB_TYPE_BIT-1:0] type[0:`ROB_SIZE-1];
 
     reg [5:0] rob_size;
+    wire rob_empty = rob_size == 0;
 
     localparam ROB_SIZE_MAX = 6'b100000;
     assign rob_full = rob_size == ROB_SIZE_MAX || (rob_size == ROB_SIZE_MAX - 1 && !(is_finished[head] && !rob_empty) && rob_input);

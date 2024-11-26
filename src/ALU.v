@@ -56,8 +56,8 @@ begin
                 BEQ: res <= r1_val == r2_val;
                 BGE: res <= $signed(r1_val) >= $signed(r2_val);
                 BGEU: res <= r1_val >= r2_val;
-                BLT: res <= r1_val < r2_val;
-                BLTU: res <= $signed(r1_val) < $signed(r2_val);
+                BLT: res <= $signed(r1_val) < $signed(r2_val);
+                BLTU: res <= r1_val < r2_val;
                 BNE: res <= r1_val != r2_val;
             endcase
         end

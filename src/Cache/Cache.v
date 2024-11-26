@@ -37,8 +37,30 @@ module Cache(
     // the handle must calculate in this cycle
     // the ic instruction is handled by the fetcher
 );
+    wire is_handle_data = need_data;
     wire i_hit;
     wire [31:0] i_data;
+    wire [31:0] mc_out;
+    wire mc_is_working;
+    wire mc_ready_out;
+    
+    wire mc_is_write = is_handle_data ? is_write : 0;
+    wire [31:0] mc_addr = is_handle_data ? data_addr : inst_addr;
+    wire [2:0] mc_work_type = is_handle_data ? work_type : 3'b010;
+    reg is_data;
+    reg [31:0] cur_addr;
+    wire able_handle = !mc_is_working && !io_buffer_full && !rob_clear;
+    wire need_handle = able_handle && (need_inst && !i_hit || need_data);
+    // refer to is mc need handle, not contain the hit 
+    // data_fetch is with priority
+    assign inst_handle = (need_inst && i_hit) ? 1 : need_handle && !is_handle_data;
+    assign data_handle = need_handle && is_handle_data;
+    
+    // when rob_clear, only the ICache is working
+    assign inst_ready = (need_inst && i_hit) ? 1 : !rob_clear && mc_ready_out && !is_data; 
+    assign inst_out = (need_inst && i_hit) ? i_data : mc_out;
+    assign data_ready = !rob_clear && mc_ready_out && is_data;
+    assign data_out = mc_out;
     InstCache inst_cache(
         .clk_in(clk_in),
         .rst_in(rst_in),
@@ -52,13 +74,6 @@ module Cache(
         .data_in(inst_out),
         .addr_in(cur_addr)
     );
-    wire [31:0] mc_out;
-    wire mc_is_working;
-    wire mc_ready_out;
-    
-    wire mc_is_write = is_handle_data ? is_write : 0;
-    wire [31:0] mc_addr = is_handle_data ? data_addr : inst_addr;
-    wire [2:0] mc_work_type = is_handle_data ? work_type : 3'b010;
     MemCtrl mem_ctrl(
         .clk_in(clk_in),
         .rst_in(rst_in),
@@ -84,21 +99,6 @@ module Cache(
 
     // reg is_working;
     // reg ready_out;
-    reg is_data;
-    reg [31:0] cur_addr;
-    wire able_handle = !mc_is_working && !rob_clear;
-    wire need_handle = able_handle && (need_inst && !i_hit || need_data);
-    // refer to is mc need handle, not contain the hit 
-    wire is_handle_data = need_data;
-    // data_fetch is with priority
-    assign inst_handle = (need_inst && i_hit) ? 1 : need_handle && !is_handle_data;
-    assign data_handle = need_handle && is_handle_data;
-    
-    // when rob_clear, only the ICache is working
-    assign inst_ready = (need_inst && i_hit) ? 1 : !rob_clear && mc_ready_out && !is_data; 
-    assign inst_out = (need_inst && i_hit) ? i_data : mc_out;
-    assign data_ready = !rob_clear && mc_ready_out && is_data;
-    assign data_out = mc_out;
 
 always @(posedge clk_in)
 begin

@@ -36,6 +36,13 @@ module MemCtrl(
     // output wire [7:0] mem_data_out, // the data
  
 );
+    reg cur_is_write;
+    reg ready_out; // if the data is ready
+    reg [31:0] cur_addr;
+    reg [31:0] cur_data_in;
+    reg [31:0] cur_data_out;
+    reg [2:0] cur_work_type;
+    reg [1:0]cur_state;
     assign mem_a = new_task ? addr : (!is_working ? 0 : cur_addr + cur_state + 1);
     assign mem_wr = new_task ? is_write : (!is_working ? 0 : cur_is_write);
     // wire [4:0] start_pos = cur_state << 3;
@@ -48,14 +55,7 @@ module MemCtrl(
     assign mem_dout = new_task ? data_in[7:0] : switch_data;
 
 
-    reg ready_out; // if the data is ready
     assign real_ready_out = (rob_clear && !cur_is_write) ? 0 : ready_out;
-    reg cur_is_write;
-    reg [31:0] cur_addr;
-    reg [31:0] cur_data_in;
-    reg [31:0] cur_data_out;
-    reg [2:0] cur_work_type;
-    reg [1:0]cur_state;
     // the read offset
 
     wire [31:0] data_out_b = {{24{mem_din[7]}}, mem_din[7:0]};
@@ -71,13 +71,14 @@ module MemCtrl(
         ((cur_work_type[1:0] == 2'b00) ? data_out_bu :
         (cur_work_type[1:0] == 2'b01) ? data_out_hu :
         0);
-
+    reg is_read_last_moment;
 always @(posedge clk_in)
 begin
     if (rst_in)
     begin
         is_working <= 0;
         ready_out <= 0;
+        is_read_last_moment <= 0;
     end
 else if (rdy_in)
     begin
@@ -85,12 +86,15 @@ else if (rdy_in)
             $display("Warning: new task is coming while the last one is not finished, while not rob_clear");
         end
         if(new_task) begin
+            if(io_buffer_full) begin
+                $display("Warning: new task is coming while the buffer is full");
+            end
             cur_is_write <= is_write;
             cur_addr <= addr;
             cur_data_in <= data_in;
             cur_work_type <= work_type;
             cur_state <= 2'b00;
-            
+            is_read_last_moment <= 1;
             if(work_type[1:0] == 2'b00) begin
                 is_working <= 0;
                 ready_out <= !is_write;
@@ -101,22 +105,31 @@ else if (rdy_in)
             end
         end 
         else if(is_working) begin
-            if(cur_state == cur_work_type[1:0] || (rob_clear && !cur_is_write)) begin
-                is_working <= 0;
-                ready_out <= !cur_is_write && !rob_clear;
+            if(is_read_last_moment)begin
+                case (cur_state) 
+                    2'b00: cur_data_out[7:0] <= mem_din;
+                    2'b01: cur_data_out[15:8] <= mem_din;
+                    2'b10: cur_data_out[23:16] <= mem_din;
+                    2'b11: cur_data_out[31:24] <= mem_din;
+                endcase
             end
-            case (cur_state) 
-                2'b00: cur_data_out[7:0] <= mem_din;
-                2'b01: cur_data_out[15:8] <= mem_din;
-                2'b10: cur_data_out[23:16] <= mem_din;
-                2'b11: cur_data_out[31:24] <= mem_din;
-            endcase
-            cur_state <= cur_state + 1;
+            if(!io_buffer_full) begin
+                if(cur_state == cur_work_type[1:0] || (rob_clear && !cur_is_write)) begin
+                    is_working <= 0;
+                    ready_out <= !cur_is_write && !rob_clear;
+                end
+                cur_state <= cur_state + 1;
+                is_read_last_moment <= 1;
+            end 
+            else begin
+                is_read_last_moment <= 0;
+            end
             // cur_data_out[end_pos:start_pos] <= mem_dout;
         end 
         
         if(!is_working && !new_task) begin
             ready_out <= 0;
+            is_read_last_moment <= 0;
         end
     end
 end
