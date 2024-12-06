@@ -27,7 +27,8 @@
 module fifo
 #(
   parameter DATA_BITS = 8,
-  parameter ADDR_BITS = 3
+  parameter ADDR_BITS = 3,
+  parameter DEBUG = 0
 )
 (
   input  wire                 clk,      // 50MHz system clock
@@ -59,7 +60,16 @@ wire wr_en_prot;
 always @(posedge clk)
   begin
     if (reset)
-      begin
+      if(DEBUG) begin
+        q_rd_ptr <= 0;
+        q_wr_ptr <= 3;
+        q_empty  <= 1'b0;
+        q_full   <= 1'b0;
+        q_data_array[0] <= 49;
+        q_data_array[1] <= 50;
+        q_data_array[2] <= 51;
+      end
+      else begin
         q_rd_ptr <= 0;
         q_wr_ptr <= 0;
         q_empty  <= 1'b1;
