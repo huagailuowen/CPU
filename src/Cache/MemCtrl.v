@@ -48,8 +48,10 @@ module MemCtrl(
     reg [7:0] last_mem_dout;
 
     wire is_io = cur_addr[17:16] == 2'b11;
-    assign mem_a = rdy_in ? (new_task ? addr : (!is_working ? 0 : cur_addr + cur_state + 1)) : 0;
-    assign mem_wr = rdy_in ? (new_task ? is_write : (!is_working ? 0 : cur_is_write)) : 0;
+    // assign mem_a = rdy_in ? (new_task ? addr : (!is_working ? 0 : cur_addr + cur_state + 1)) : 0;
+    assign mem_a = new_task ? addr : (!is_working ? 0 : cur_addr + cur_state + 1);
+    // assign mem_wr = rdy_in ? (new_task ? is_write : (!is_working ? 0 : cur_is_write)) : 0;
+    assign mem_wr = new_task ? is_write : (!is_working ? 0 : cur_is_write);
     // wire [4:0] start_pos = cur_state << 3;
     // wire [4:0] end_pos = start_pos + 7;
     wire [7:0] switch_data = (cur_state == 2'b00) ? cur_data_in[15:8] :
@@ -57,8 +59,8 @@ module MemCtrl(
         cur_data_in[31:24];
 
     // assign mem_dout = new_task ? data_in[7:0] : cur_data_in[end_pos:start_pos];
-    assign mem_dout = rdy_in ? (new_task ? data_in[7:0] : switch_data) : 0;
-
+    // assign mem_dout = rdy_in ? (new_task ? data_in[7:0] : switch_data) : 0;
+    assign mem_dout = new_task ? data_in[7:0] : switch_data;
 
     assign real_ready_out = (rob_clear && !cur_is_write) ? 0 : ready_out;
     // the read offset
