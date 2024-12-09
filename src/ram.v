@@ -25,11 +25,13 @@ single_port_ram_sync #(.ADDR_WIDTH(ADDR_WIDTH),
   .dout_a(ram_bram_dout)
 );
 
-assign ram_bram_we = (last_en) ? ~r_nw_in      : 1'b0;
-assign d_out       = (last_en) ? ram_bram_dout : 8'h00;
-always @(posedge clk_in) 
-begin
-  last_en <= en_in;
-end
+assign ram_bram_we = (en_in) ? ~r_nw_in      : 1'b0;
+assign d_out       = ram_bram_dout;
+// assign ram_bram_we = (last_en) ? ~r_nw_in      : 1'b0;
+// assign d_out       = (last_en) ? ram_bram_dout : 8'h00;
+// always @(posedge clk_in) 
+// begin
+//   last_en <= en_in;
+// end
 
 endmodule
