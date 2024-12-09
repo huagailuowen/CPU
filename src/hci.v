@@ -121,7 +121,9 @@ reg  [ 7:0] q_io_dout, d_io_dout;
 // Input Buffer
 fifo #(.DATA_BITS(8),
        .ADDR_BITS(IO_IN_BUF_WIDTH),
+       .INIT_FROM_FILE(1),
        .DEBUG(0)) io_in_fifo
+       
 (
   .clk(clk),
   .reset(rst),
