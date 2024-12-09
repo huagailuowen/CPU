@@ -77,6 +77,9 @@ module ROB (
     // assign rob_full = rob_size >=1;
     assign rob_free_id = rob_clear ? 0 : (rob_input ? tail + 1 : tail);
     wire is_pop = is_finished[head] && !rob_empty;
+    wire tttmp = res[head] , tttmmmp=rd_id[head];
+    wire [`ROB_SIZE_BIT-1:0]tt1= type[rs_rob_id];
+    wire [`ROB_SIZE_BIT-1:0]tt2= type[lsb_rob_id];
     assign rob_head_id = rob_clear ? 0 : (is_pop && !(type[head] == `ROB_BR && res[head] != rd_id[head])? head + 1 : head);
     // handle the query, 
     assign rob_qry1_ready = (rob_input && tail == rob_qry1_id)? rob_fi : (rs_fi && rs_rob_id ==rob_qry1_id ? 1 : (lsb_fi && lsb_rob_id == rob_qry1_id ? 1 : is_finished[rob_qry1_id]));
@@ -147,7 +150,8 @@ begin
             end
             if(lsb_fi) begin
                 is_finished[lsb_rob_id] <= 1;
-                res[lsb_rob_id] <= lsb_value;
+                if(type[lsb_rob_id]!=`ROB_ST)
+                    res[lsb_rob_id] <= lsb_value;
             end 
             if(is_pop) begin
                 head <= head + 1;

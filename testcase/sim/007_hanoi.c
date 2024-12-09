@@ -1,7 +1,7 @@
 #include "io.h"
 int cd(int d, char* a, char* b, char* c, int sum) {
     sleep(5); // to prevent UART buffer from overflowing
-    outlln(d);
+    // outlln(d);
     if (d == 1) {
         print("move ");
         print(a);
@@ -21,11 +21,10 @@ int cd(int d, char* a, char* b, char* c, int sum) {
 }
 
 int main() {
-    char a[5] = "S";
+    char a[5] = "A";
 	char b[5] = "B";
 	char c[5] = "C";
-    outlln(inl());
-    int d = 1;
+    int d = inl();
     int sum = cd(d, a, b, c, 0);
     outlln(sum);
     return 0;
