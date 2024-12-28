@@ -8,6 +8,8 @@ TESTCASE_SRCS := $(shell find $(PWD) -name '*.c')
 DATAFILES := $(TESTCASE_SRCS:.c=.data)
 DUMPFILES := $(TESTCASE_SRCS:.c=.dump)
 
+.SECONDARY: $(TESTCASE_SRCS:.c=.elf)
+
 # compile tools
 AS := $(RISCV_TOOLCHAIN)as
 CC := $(RISCV_TOOLCHAIN)gcc
@@ -18,7 +20,6 @@ OBJDUMP := $(RISCV_TOOLCHAIN)objdump
 # compile options
 # Link library least support: [ rv32i rv32iac rv32im rv32imac rv32imafc rv64imac rv64imafdc ] if use the given dockerfile(archlinux with riscv64-elf-newlib)
 # other option such as _zicsr might be available as well
-# MARCH_STRING := rv32i
 MARCH_STRING := rv32ic
 ABI_STRING := ilp32
 

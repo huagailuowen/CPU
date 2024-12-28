@@ -207,7 +207,9 @@ module Decoder (
 
     // wire br_pred = br_predictor(); has not finished yet
 
+    // assign is_stall = !inst_input || rob_clear || rob_full || rs_full || lsb_full || (is_jalr && tmp_r1_has_dep);
     assign is_stall = !inst_input || rob_clear || rob_full || rs_full || lsb_full || (is_jalr && tmp_r1_has_dep);
+
     assign next_PC = need_set_PC ? (is_jal ? next_PC_JAL : (is_br ? next_PC_BR : next_PC_JALR)) : (!is_c_inst ? inst_addr + 4 : inst_addr + 2);
 
 always @(posedge clk_in or posedge rst_in) 

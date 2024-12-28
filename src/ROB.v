@@ -80,7 +80,8 @@ module ROB (
     wire tttmp = res[head] , tttmmmp=rd_id[head];
     wire [`ROB_SIZE_BIT-1:0]tt1= type[rs_rob_id];
     wire [`ROB_SIZE_BIT-1:0]tt2= type[lsb_rob_id];
-    assign rob_head_id = rob_clear ? 0 : (is_pop && !(type[head] == `ROB_BR && res[head] != rd_id[head])? head + 1 : head);
+    // assign rob_head_id = rob_clear ? 0 : (is_pop && !(type[head] == `ROB_BR && res[head] != rd_id[head])? head + 1 : head);
+    assign rob_head_id = rob_clear ? 0 : head;
     // handle the query, 
     assign rob_qry1_ready = (rob_input && tail == rob_qry1_id)? rob_fi : (rs_fi && rs_rob_id ==rob_qry1_id ? 1 : (lsb_fi && lsb_rob_id == rob_qry1_id ? 1 : is_finished[rob_qry1_id]));
     assign rob_qry1_value = (rob_input && tail == rob_qry1_id)? rob_value : (rs_fi && rs_rob_id ==rob_qry1_id ? rs_value : (lsb_fi && lsb_rob_id == rob_qry1_id ? lsb_value : res[rob_qry1_id]));

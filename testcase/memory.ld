@@ -17,6 +17,8 @@ SECTIONS
 		*(.data)
 	}
 
+	
+
 	__bss_start = .;
 
 	.bss ALIGN(4) : {
