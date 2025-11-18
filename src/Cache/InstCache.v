@@ -13,7 +13,7 @@ module InstCache(
     input wire [31:0] data_in,
     input wire [31:0] addr_in
 );
-    localparam CACHE_SIZE_BIT = 4;
+    localparam CACHE_SIZE_BIT = 7;
     localparam TAG_LEN = 32 - CACHE_SIZE_BIT  - 1;
     reg [TAG_LEN-1:0] tag [0:(1<<CACHE_SIZE_BIT)-1];
     reg valid [0:(1<<CACHE_SIZE_BIT)-1];
